@@ -5,8 +5,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
 from pandas_ml import ConfusionMatrix
-
+from sklearn.svm import LinearSVC
 
 def get_input():
     print("Enter space-separated values of 'train folder', 'feature model', 'k':")
@@ -38,8 +40,11 @@ def create_data_matrix(folder, feature_model, label_mode):
 
 
 def train_classifier(train_matrix, labels, classifier):
-    classifier = classifier_function_name()
-    model = classifier.fit(train_matrix, labels)
+    if classifier == "Decison_Trees":
+        model = dtree()
+    elif classifier == "svm":
+        model= svm()
+    model.fit(train_matrix, labels)
     return model
 
 
@@ -73,6 +78,20 @@ def compute_and_print_outputs(true_labels, pred_labels):
 
     # cnf_matrix.print_stats()
 
+
+def dtree():
+    model_dtree = DecisionTreeClassifier(class_weight=None, criterion='entropy', max_depth=None,
+                    max_features=None, max_leaf_nodes=None,
+                    min_impurity_decrease=0.0, min_impurity_split=None,
+                    min_samples_leaf=1, min_samples_split=6,
+                    min_weight_fraction_leaf=0.0, presort=False,
+                    random_state=None, splitter='best')
+    # model_dtree.fit(x_train_tfidf,y_train)
+    return model_dtree
+
+def svm():
+    svm_model = LinearSVC()
+    return svm_model
 
 if __name__ == "__main__":
     train_folder, feature_model, k, test_folder, classifier = get_input()
