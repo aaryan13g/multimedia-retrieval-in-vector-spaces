@@ -1,6 +1,8 @@
 import os
 import pymongo
 import numpy as np
+import random
+import itertools
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
@@ -71,6 +73,70 @@ def svm():
     return svm_model
 
 
+def normalize_data(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
+
+
+def calc_distance_between_matrices(matrix1, matrix2):
+    dist_list = []
+    for p in range(len(matrix1)):
+        feature_vector_1 = matrix1[p]
+        feature_vector_2 = matrix2[p]
+        dist = np.linalg.norm(feature_vector_1 - feature_vector_2)
+        dist_list.append(dist)
+    dist_sum = sum(dist_list)
+    return dist_sum / len(matrix1)
+
+
+def create_similarity_matrix(train_matrix, train_labels):
+    sim_dict = {}
+    for i in range(len(train_labels)):
+        if train_labels[i] not in sim_dict:
+            sim_dict[train_labels[i]] = []
+        sim_dict[train_labels[i]] += train_matrix[i].tolist()
+    for label in sim_dict:
+        sim_dict[label] = np.array(sim_dict[label])
+    combinations = list(itertools.combinations(sim_dict.keys(), 2))
+    sim_mat_size = len(sim_dict.keys())
+    similarity_matrix = np.zeros((sim_mat_size, sim_mat_size))
+    i, j = 0, 0
+    for combination in combinations:
+        while similarity_matrix[i][j] != 0:
+            # print("Value filled: ", i, " ", j)
+            if j == sim_mat_size - 1:
+                i = i + 1
+                j = 0
+            else:
+                j = j + 1
+        if i == j:
+            # print("Equal: ", i, " ", j)
+            similarity_matrix[i][j] = 0.0
+            j = j + 1
+        dist_val = calc_distance_between_matrices(sim_dict[combination[0]], sim_dict[combination[1]])
+        similarity_matrix[i][j] = dist_val
+        similarity_matrix[j][i] = dist_val
+        # print(combination, " ", i, " ", j, " ", dist_val)
+        if j == sim_mat_size - 1:
+            i = i + 1
+            j = 0
+        else:
+            j = j + 1
+    similarity_matrix = normalize_data(similarity_matrix)
+    similarity_matrix = 1 - similarity_matrix
+    return similarity_matrix, sim_dict
+
+
+def find_min_distance_with_data_matrix(individual_data_matrix, image_vector):
+    dists = []
+    for image in individual_data_matrix:
+        dists.append(np.linalg.norm(image - image_vector))
+    return min(dists)
+
+
+def ppr_classifier(similarity_matrix, label_list):
+    return random.choice(label_list)
+
+
 def train_classifier(train_matrix, labels, classifier):
     model = None
     if classifier == "dtree":
@@ -113,6 +179,7 @@ def compute_and_print_outputs(true_labels, pred_labels):
 
 if __name__ == "__main__":
     train_folder, feature_model, k, test_folder, classifier = get_input()
+    # train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
         print("Existing latent semantics and train matrix found!")
@@ -123,12 +190,33 @@ if __name__ == "__main__":
         latent_semantics, train_matrix = apply_dim_red(data_matrix, k)
         np.savetxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_LS.csv', latent_semantics, delimiter=',')
         np.savetxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_WT.csv', train_matrix, delimiter=',')
+    print("Latent Semantics File: ", train_folder + '_' + feature_model + '_' + k + '_LS.csv')
 
     print("Training model now...")
-    model = train_classifier(train_matrix, labels, classifier)
-    print(classifier, " model training completed!")
-    test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
-    test_matrix = test_data_matrix @ latent_semantics
-    pred_labels = predict(model, test_matrix)
+    if classifier == 'ppr':
+        similarity_matrix, individual_train_dict = create_similarity_matrix(train_matrix, labels)
+        print("Similarity matrix:\n", similarity_matrix)
+        test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
+        test_matrix = test_data_matrix @ latent_semantics
+        pred_labels = []
+        for img in test_matrix:
+            distance_list = []
+            for label in individual_train_dict:
+                distance_list.append(find_min_distance_with_data_matrix(individual_train_dict[label], img))
+            similarity_list = normalize_data(distance_list)
+            similarity_list = 1 - similarity_list
+            updated_similarity_matrix = similarity_matrix.copy()
+            updated_similarity_matrix = np.insert(updated_similarity_matrix, len(similarity_list), similarity_list, axis=1)
+            similarity_list = np.append(similarity_list, 1)
+            updated_similarity_matrix = np.insert(updated_similarity_matrix, len(similarity_list) - 1, similarity_list, axis=0)
+            print("Updated Similarity Matrix:\n", updated_similarity_matrix)
+            predicted = ppr_classifier(updated_similarity_matrix, list(individual_train_dict.keys()))
+            pred_labels.append(predicted)
+    else:
+        model = train_classifier(train_matrix, labels, classifier)
+        print(classifier, " model training completed!")
+        test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
+        test_matrix = test_data_matrix @ latent_semantics
+        pred_labels = predict(model, test_matrix)
     compute_and_print_outputs(true_labels, pred_labels)
     print("Task Completed!")
