@@ -37,17 +37,17 @@ class LSH:
         for i in range(self.n_layers):
             self.layers.append(HashTable(self.hash_size, self.inp_dimensions))
     
-    def get_item(self, inp_vec,index):
+    def get_hash_key(self, inp_vec):
         print("Get_item_LSH")
         print("INput_vector",inp_vec)
         hash_key = ""
         for table in self.layers:
             hash_key += table[inp_vec]
         print("Hash_Key",hash_key)
-        #return list(set(results))
+        return hash_key
+
+    def make_hash_table(self,hash_key,index):
         self.hash_table.setdefault(hash_key,[]).append(index)
-        #print(self.hash_table)
-        return
 
     def get_table(self):
         return self.hash_table
@@ -80,23 +80,40 @@ def create_data_matrix(folder, feature_model):
     print("Shape of data matrix: ", data_matrix.shape)
     return data_matrix
 
-def create_LSH(data_matrix,n_layers,n_hash_per_layer):
-    LSH_structure = LSH(n_layers,n_hash_per_layer,len(data_matrix[0]))
-    #print(LSH_structure)
-    #results = list()
+def create_LSH(inp_dimensions,n_layers,n_hash_per_layer):
+    LSH_structure = LSH(n_layers,n_hash_per_layer,inp_dimensions)
+    return LSH_structure
+
+def get_hash_key(LSH_structure,data_matrix):
+    hash_key_list = list()
     for i in range(len(data_matrix)):
-        #print(image)
-        #print(LSH_structure[image])
-        #results.append(LSH_structure[data_matrix[i],i+1])
-        LSH_structure.get_item(data_matrix[i],i+1)
-        result = LSH_structure.get_table()
-    return result
+        hash_key = LSH_structure.get_hash_key(data_matrix[i])
+        hash_key_list.append(hash_key)
+    return hash_key_list
+
+def create_dict(LSH_structure,hash_key_list):
+    for i in range(len(hash_key_list)):
+        LSH_structure.make_hash_table(hash_key_list[i],i+1)
+    return 
+
+def get_similar_images(query_image,t,Hash_key_table,LSH_structure,n_layers,n_hash_per_layer):
+    Hash_key =  LSH_structure.get_hash_key(query_image)
+    Matches = Hash_key_table[Hash_key]
+    return Matches
+    
+
 
 if __name__ == "__main__":
     n_layers, n_hash_per_layer, folder = get_input()
     data_matrix = create_data_matrix(folder, feature_model = "elbp")
-    results = create_LSH(data_matrix,n_layers,n_hash_per_layer)
-    print(results)
+    LSH_structure = create_LSH(len(data_matrix[0]),n_layers,n_hash_per_layer)
+    Hash_key_list = get_hash_key(LSH_structure,data_matrix)
+    create_dict(LSH_structure,Hash_key_list)
+    Hash_key_table = LSH_structure.get_table()
+    print(Hash_key_table)
+    matches = get_similar_images(data_matrix[0],2,Hash_key_table,LSH_structure,n_layers,n_hash_per_layer)
+    print(matches)
+
 
     
     
