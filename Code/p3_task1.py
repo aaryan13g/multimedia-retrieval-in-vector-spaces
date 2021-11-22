@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from Phase2.task1 import pca, svd, kmeans, lda
+from Phase2.task9 import Node, create_sim_graph, convert_graph_to_nodes, pagerank_one_iter
 
 
 def get_input():
@@ -134,6 +135,22 @@ def find_min_distance_with_data_matrix(individual_data_matrix, image_vector):
 
 
 def ppr_classifier(similarity_matrix, label_list):
+    similarity_graph = create_sim_graph(similarity_matrix, n=3)
+    nodes = convert_graph_to_nodes(similarity_graph, len(similarity_matrix))
+    query_subjects = ['13']
+    i = 0
+    while i < 100:
+        converge = pagerank_one_iter(nodes, 0.15, query_subjects)
+        if converge:
+            break
+        i = i + 1
+    print("PageRank converged in ", i, " iterations.")
+    for node in nodes:
+        node.print_node()
+    match_dict = {}
+    for node in nodes:
+        match_dict[node.id] = node.pagerank
+    print(match_dict)
     return random.choice(label_list)
 
 
@@ -178,8 +195,8 @@ def compute_and_print_outputs(true_labels, pred_labels):
 
 
 if __name__ == "__main__":
-    train_folder, feature_model, k, test_folder, classifier = get_input()
-    # train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
+    # train_folder, feature_model, k, test_folder, classifier = get_input()
+    train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
         print("Existing latent semantics and train matrix found!")
@@ -199,7 +216,7 @@ if __name__ == "__main__":
         test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
         test_matrix = test_data_matrix @ latent_semantics
         pred_labels = []
-        for img in test_matrix:
+        for img in test_matrix[:1]:
             distance_list = []
             for label in individual_train_dict:
                 distance_list.append(find_min_distance_with_data_matrix(individual_train_dict[label], img))
