@@ -29,6 +29,7 @@ def normalize_data(data):
 def extract_features_for_new_image(image_path, feature_model):
     image = Image.open(image_path)
     image_data = np.asarray(image) / 255  # normalize the image array
+    features = None
     if feature_model == 'cm':
         features = color_moments_model(image_data)
         features = normalize_data(features.flatten(order="C").tolist()).tolist()
@@ -62,6 +63,7 @@ def create_data_matrix(folder, feature_model, label_mode):
                     print('new image ', image)
                     features = extract_features_for_new_image(train_path + image, feature_model)
                     temp = image[:-4].split('-')
+                    label = ''
                     if label_mode == 'X':
                         label = temp[1]
                     elif label_mode == 'Y':
@@ -244,6 +246,7 @@ if __name__ == "__main__":
         print("Latent Semantics File: ", train_folder + '_' + feature_model + '_' + k + '_LS.csv')
     else:
         train_matrix = data_matrix
+        latent_semantics = None
     print("Training model now...")
     if classifier == 'ppr':
         similarity_matrix, individual_train_dict = create_similarity_matrix(train_matrix, labels)

@@ -17,6 +17,7 @@ if __name__ == "__main__":
             np.savetxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_WT.csv', train_matrix, delimiter=',')
     else:
         train_matrix = data_matrix
+        latent_semantics = None
 
     print("Training model now...")
     model = train_classifier(train_matrix, labels, classifier)
