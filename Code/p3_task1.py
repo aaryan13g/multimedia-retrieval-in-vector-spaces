@@ -8,6 +8,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from PIL import Image
+from Phase1.task1 import color_moments_model, extract_lbp, histogram_of_oriented_gradients_model
 from Phase2.task1 import pca, svd, kmeans, lda
 from Phase2.task9 import Node, create_sim_graph, convert_graph_to_nodes, pagerank_one_iter
 
@@ -20,6 +22,25 @@ def get_input():
     return train_folder, feature_model, k, test_folder, classifier
 
 
+def normalize_data(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
+
+
+def extract_features_for_new_image(image_path, feature_model):
+    image = Image.open(image_path)
+    image_data = np.asarray(image) / 255  # normalize the image array
+    if feature_model == 'cm':
+        features = color_moments_model(image_data)
+        features = normalize_data(features.flatten(order="C").tolist()).tolist()
+    elif feature_model == 'elbp':
+        features = normalize_data(extract_lbp(image_data)).tolist()
+    elif feature_model == 'hog':
+        features, _ = histogram_of_oriented_gradients_model(image_data)
+        features = normalize_data(features.tolist()).tolist()
+    
+    return features
+
+
 def create_data_matrix(folder, feature_model, label_mode):
     client = pymongo.MongoClient("mongodb+srv://mwdbuser:mwdbpassword@cluster0.u1c4q.mongodb.net/Phase2?retryWrites=true&w=majority")
     db = client.Phase2.InputFeatures
@@ -29,13 +50,29 @@ def create_data_matrix(folder, feature_model, label_mode):
     labels = []
     if folder + '_' + feature_model + '.csv' not in os.listdir("Data-matrices"):
         print(folder + '_' + feature_model + '.csv not found! Creating and saving it...')
-        result = db.find({"img_name": {"$in": images}}, {feature_model: 1, label_mode: 1, "_id": 0})
-        i = 0
-        for document in result:
-            i += 1
-            data_matrix.append(document[feature_model])
-            labels.append(document[label_mode])
-            print("Done: ", i)
+        result = db.find({"img_name": {"$in": images}}, {'img_name': 1, feature_model: 1, label_mode: 1, "_id": 0})
+        if len(images) == db.count_documents({"img_name": {"$in": images}}):
+            for document in result:
+                data_matrix.append(document[feature_model])
+                labels.append(document[label_mode])
+        else:
+            img_names = [doc['img_name'] for doc in result]
+            for image in images:
+                if image not in img_names:
+                    print('new image ', image)
+                    features = extract_features_for_new_image(train_path + image, feature_model)
+                    temp = image[:-4].split('-')
+                    if label_mode == 'X':
+                        label = temp[1]
+                    elif label_mode == 'Y':
+                        label = temp[2]
+                    elif label_mode == 'Z':
+                        label = temp[3]
+                    document = {'img_name': image, feature_model: features, label_mode: label}
+                else:
+                    document = db.find_one({"img_name": image}, {'img_name': 1, feature_model:1, label_mode: 1, "_id": 0})
+                data_matrix.append((document[feature_model]))
+                labels.append(document[label_mode])
         data_matrix = np.array(data_matrix)
         np.savetxt("Data-matrices/" + folder + '_' + feature_model + '.csv', data_matrix, delimiter=',')
     else:
@@ -72,10 +109,6 @@ def dtree():
 def svm():
     svm_model = SVC()
     return svm_model
-
-
-def normalize_data(data):
-    return (data - np.min(data)) / (np.max(data) - np.min(data))
 
 
 def calc_distance_between_matrices(matrix1, matrix2):
@@ -195,26 +228,31 @@ def compute_and_print_outputs(true_labels, pred_labels):
 
 
 if __name__ == "__main__":
-    # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
+    train_folder, feature_model, k, test_folder, classifier = get_input()
+    # train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
-    if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
-        print("Existing latent semantics and train matrix found!")
-        latent_semantics = np.loadtxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_LS.csv', delimiter=',')
-        train_matrix = np.loadtxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_WT.csv', delimiter=',')
+    if k != 'all' or k != '*':
+        if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
+            print("Existing latent semantics and train matrix found!")
+            latent_semantics = np.loadtxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_LS.csv', delimiter=',')
+            train_matrix = np.loadtxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_WT.csv', delimiter=',')
+        else:
+            print("Existing latent semantics and train matrix not found! Creating and saving them...")
+            latent_semantics, train_matrix = apply_dim_red(data_matrix, k)
+            np.savetxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_LS.csv', latent_semantics, delimiter=',')
+            np.savetxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_WT.csv', train_matrix, delimiter=',')
+        print("Latent Semantics File: ", train_folder + '_' + feature_model + '_' + k + '_LS.csv')
     else:
-        print("Existing latent semantics and train matrix not found! Creating and saving them...")
-        latent_semantics, train_matrix = apply_dim_red(data_matrix, k)
-        np.savetxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_LS.csv', latent_semantics, delimiter=',')
-        np.savetxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_WT.csv', train_matrix, delimiter=',')
-    print("Latent Semantics File: ", train_folder + '_' + feature_model + '_' + k + '_LS.csv')
-
+        train_matrix = data_matrix
     print("Training model now...")
     if classifier == 'ppr':
         similarity_matrix, individual_train_dict = create_similarity_matrix(train_matrix, labels)
         print("Similarity matrix:\n", similarity_matrix)
         test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
-        test_matrix = test_data_matrix @ latent_semantics
+        if k != 'all' or k != '*':
+            test_matrix = test_data_matrix @ latent_semantics
+        else:
+            test_matrix = test_data_matrix
         pred_labels = []
         for img in test_matrix[:1]:
             distance_list = []
@@ -233,7 +271,10 @@ if __name__ == "__main__":
         model = train_classifier(train_matrix, labels, classifier)
         print(classifier, " model training completed!")
         test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
-        test_matrix = test_data_matrix @ latent_semantics
+        if k != 'all' or k != '*':
+            test_matrix = test_data_matrix @ latent_semantics
+        else:
+            test_matrix = test_data_matrix
         pred_labels = predict(model, test_matrix)
     compute_and_print_outputs(true_labels, pred_labels)
     print("Task Completed!")
