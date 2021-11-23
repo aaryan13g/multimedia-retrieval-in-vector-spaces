@@ -166,7 +166,7 @@ def find_min_distance_with_data_matrix(individual_data_matrix, image_vector):
     dists = []
     for image in individual_data_matrix:
         dists.append(np.linalg.norm(image - image_vector))
-    return min(dists)
+    return sum(dists)/len(dists)
 
 
 def ppr_classifier(similarity_matrix, label_list):
@@ -183,10 +183,16 @@ def ppr_classifier(similarity_matrix, label_list):
     for node in nodes:
         node.print_node()
     match_dict = {}
+    maxx = -1
+    max_node = None
     for node in nodes:
         match_dict[node.id] = node.pagerank
+        if node.pagerank > maxx:
+            maxx = node.pagerank
+            max_node = node.id
+    match_dict = dict(sorted(match_dict.items(), key=lambda item: item[1]))
     print(match_dict)
-    return random.choice(label_list)
+    return str(max_node)
 
 
 def train_classifier(train_matrix, labels, classifier):
@@ -230,8 +236,8 @@ def compute_and_print_outputs(true_labels, pred_labels):
 
 
 if __name__ == "__main__":
-    train_folder, feature_model, k, test_folder, classifier = get_input()
-    # train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
+    # train_folder, feature_model, k, test_folder, classifier = get_input()
+    train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     if k != 'all' or k != '*':
         if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
@@ -257,7 +263,7 @@ if __name__ == "__main__":
         else:
             test_matrix = test_data_matrix
         pred_labels = []
-        for img in test_matrix[:1]:
+        for img in test_matrix[:]:
             distance_list = []
             for label in individual_train_dict:
                 distance_list.append(find_min_distance_with_data_matrix(individual_train_dict[label], img))
