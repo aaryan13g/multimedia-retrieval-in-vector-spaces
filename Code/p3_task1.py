@@ -14,6 +14,59 @@ from Phase2.task1 import pca, svd, kmeans, lda
 from Phase2.task9 import Node, create_sim_graph, convert_graph_to_nodes, pagerank_one_iter
 
 
+class SVM:
+    def __init__(self, learning_rate=0.001, lambda_param=0.01, n_iters=1000):
+        self.lr = learning_rate
+        self.lambda_param = lambda_param
+        self.n_iters = n_iters
+        self.separators = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        separators = {}
+        unique_labels = set(y)
+        print(unique_labels)
+        for lab in unique_labels:
+            print("Finding separator for label: ", lab)
+            y_ = [1 if y[l] == lab else -1 for l in range(len(y))]
+            w = np.zeros(n_features)
+            b = 0
+            for _ in range(self.n_iters):
+                for idx, x_i in enumerate(X):
+                    condition = y_[idx] * (np.dot(x_i, w) - b) >= 1
+                    if condition:
+                        w -= self.lr * (2 * self.lambda_param * w)
+                    else:
+                        w -= self.lr * (2 * self.lambda_param * w - np.dot(x_i, y_[idx]))
+                        b -= self.lr * y_[idx]
+            separators[lab] = (w, b)
+        self.separators = separators
+        print(self.separators)
+
+    def predict(self, X):
+        pred_list = [[]] * len(X)
+        for separator in self.separators:
+            w = self.separators[separator][0]
+            b = self.separators[separator][1]
+            approx = np.dot(X, w) - b
+            print(approx)
+            for i in range(len(approx)):
+                if approx[i] >= 0:
+                    pred_list[i] = list(np.append(pred_list[i], separator))
+        print("Predictions!", pred_list)
+        final_pred_list = []
+        for predicted_labels in pred_list:
+            if len(predicted_labels) == 1:
+                final_pred_list.append(predicted_labels[0])
+            elif len(predicted_labels) == 0:
+                default_label = 'original'
+                final_pred_list.append(default_label)
+            else:
+                final_pred_list.append(predicted_labels[-1])
+                # Need to write code for finding distance of each pred with corresponding separator
+        return final_pred_list
+
+
 def get_input():
     print("Enter space-separated values of 'train folder', 'feature model', 'k':")
     train_folder, feature_model, k = input().split(" ")
@@ -200,7 +253,7 @@ def train_classifier(train_matrix, labels, classifier):
     if classifier == "dtree":
         model = dtree()
     elif classifier == "svm":
-        model= svm()
+        model = SVM()
     model.fit(train_matrix, labels)
     return model
 
@@ -237,7 +290,7 @@ def compute_and_print_outputs(true_labels, pred_labels):
 
 if __name__ == "__main__":
     # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "5", "testt", "ppr"
+    train_folder, feature_model, k, test_folder, classifier = "500", "elbp", "5", "testt", "svm"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     if k != 'all' or k != '*':
         if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
