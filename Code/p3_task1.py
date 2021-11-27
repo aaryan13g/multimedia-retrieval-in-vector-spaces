@@ -142,9 +142,12 @@ def create_data_matrix(folder, feature_model, label_mode):
         np.savetxt("Data-matrices/" + folder + '_' + feature_model + '.csv', data_matrix, delimiter=',')
     else:
         print(folder + '_' + feature_model + '.csv found!')
-        result = db.find({"img_name": {"$in": images}}, {label_mode: 1, "_id": 0})
+        result = db.find({"img_name": {"$in": images}}, {"img_name": 1, label_mode: 1, "_id": 0})
         data_matrix = np.loadtxt("Data-matrices/" + folder + '_' + feature_model + '.csv', delimiter=',')
-        labels = [document[label_mode] for document in result]
+        if label_mode == "all":
+            labels = [document['img_name'] for document in result]
+        else:
+            labels = [document[label_mode] for document in result]
     print("Shape of data matrix: ", data_matrix.shape)
     print("No. of labels: ", len(labels))
     return data_matrix, labels

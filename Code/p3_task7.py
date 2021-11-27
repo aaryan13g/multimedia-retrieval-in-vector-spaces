@@ -7,7 +7,7 @@ def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, ve
     relevance_train_labels = []
     relevance_image_names = []
     for rank in relevant_imgs:
-        relevant_nearest_image_name = nearest_neighbors[rank][0]
+        relevant_nearest_image_name = nearest_neighbors[rank]
         label_idx = labels.index(relevant_nearest_image_name)
         relevant_image_vector = vector_space_matrix[label_idx]
         relevance_train_data_matrix.append(relevant_image_vector)
@@ -15,7 +15,7 @@ def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, ve
         relevance_image_names.append(relevant_nearest_image_name)
         del(nearest_neighbors[rank])
     for rank in irrelevant_imgs:
-        irrelevant_nearest_image_name = nearest_neighbors[rank][0]
+        irrelevant_nearest_image_name = nearest_neighbors[rank]
         label_idx = labels.index(irrelevant_nearest_image_name)
         irrelevant_image_vector = vector_space_matrix[label_idx]
         relevance_train_data_matrix.append(irrelevant_image_vector)
@@ -24,7 +24,7 @@ def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, ve
         del(nearest_neighbors[rank])
     relevance_test_data_matrix = []
     for rank in nearest_neighbors:
-        test_nearest_image_name = nearest_neighbors[rank][0]
+        test_nearest_image_name = nearest_neighbors[rank]
         label_idx = labels.index(test_nearest_image_name)
         test_image_vector = vector_space_matrix[label_idx]
         relevance_test_data_matrix.append(test_image_vector)

@@ -77,14 +77,14 @@ if __name__ == "__main__":
         inp = list(map(int, input().split()))
         L, K = inp[0], inp[1]
         nearest_neighbors = run_LSH(L, K, vector_space_matrix, labels, query_img_vector, t)
-        # nearest_neighbors = {Rank_index: (neighbor_img1, match_score), ......}
+        # nearest_neighbors = {Rank_index: neighbor_img1, ......}
     else:
         print("#Bits-per-dimension")
         b = int(input)
         nearest_neighbors = run_VA(b, vector_space_matrix, labels, query_img_vector, t)
     print('-------------------------------------------------------------------------------')
     for index in nearest_neighbors:
-        print('Index ', index, ':', nearest_neighbors[index][0], ': Match score = ', nearest_neighbors[index][1])
+        print('Index ', index, ':', nearest_neighbors[index])
     print('-------------------------------------------------------------------------------')
     print("Enter space-separated index numbers for relevant images:")
     while True:
