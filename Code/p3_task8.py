@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from p3_task1 import create_data_matrix, apply_dim_red, extract_features_for_new_image
-from p3_task4 import create_LSH, get_hash_key, create_dict, get_similar_images
+from p3_task4 import create_LSH, get_similar_images, make_index_structure
+from p3_task7 import svm_relevance_feedback
+from p3_task6 import dtree_relevance_feedback
 
 
 def create_vector_space(input_folder, feature_model, dim_red, k):
@@ -26,12 +28,9 @@ def transform_query(query_img, feature_model, latent_semantics):
 
 def run_LSH(L, K, vector_space_matrix, labels, query_img_vector, t):
     LSH_structure = create_LSH(len(vector_space_matrix[0]), L, K)
-    Hash_key_list = get_hash_key(LSH_structure, vector_space_matrix)
-    create_dict(LSH_structure, Hash_key_list)
-    Hash_key_table = LSH_structure.get_table()
-    print(Hash_key_table)
-    nearest_neighbors_dict = get_similar_images(labels, query_img_vector, t, Hash_key_table, LSH_structure, L, K)
-    return nearest_neighbors_dict
+    Hash_key_table = make_index_structure(LSH_structure, vector_space_matrix)
+    matches = get_similar_images(vector_space_matrix, query_img_vector, L, K, labels, Hash_key_table, LSH_structure, t)
+    return matches
 
 
 def run_VA(b, vector_space_matrix, labels, query_img_vector, t):
@@ -39,11 +38,11 @@ def run_VA(b, vector_space_matrix, labels, query_img_vector, t):
 
 
 def SVM_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
-    return []
+    return svm_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
 
 
 def DT_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
-    return []
+    return dtree_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
 
 
 if __name__ == "__main__":
@@ -56,7 +55,7 @@ if __name__ == "__main__":
     print("Enter the details of vector set you want: ")
     print("Enter the image folder for creating vector space:")
     input_folder = input()
-    input_folder = '../images/' + input_folder
+    # input_folder = '../images/' + input_folder
     print("Enter the feature-model required (cm/elbp/hog):")
     feature_model = input()
     print("Enter the dimensionality reduction model (pca/svd/lda/kmeans/none)")
@@ -84,7 +83,7 @@ if __name__ == "__main__":
         nearest_neighbors = run_VA(b, vector_space_matrix, labels, query_img_vector, t)
     print('-------------------------------------------------------------------------------')
     for index in nearest_neighbors:
-        print('Index ', index, ':', nearest_neighbors[index])
+        print('Rank ', index, ':', nearest_neighbors[index])
     print('-------------------------------------------------------------------------------')
     print("Enter space-separated index numbers for relevant images:")
     while True:
@@ -109,5 +108,5 @@ if __name__ == "__main__":
         ranked_results = DT_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
     print('-------------------------------------------------------------------------------')
     for index in ranked_results:
-        print('Index ', index, ':', ranked_results[index])
+        print('Rank ', index, ':', ranked_results[index])
     print('-------------------------------------------------------------------------------')

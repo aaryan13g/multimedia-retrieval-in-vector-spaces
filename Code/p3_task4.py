@@ -86,7 +86,7 @@ def print_outputs():
     pass
 
 
-def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure):
+def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t):
     while True:
         Hash_key = LSH_structure.get_hash_key(query_vector)
         Matches =[]
@@ -112,22 +112,24 @@ def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, la
             n_hash_per_layer -= 1
             print("Not enough nearest numbers found ! Optimizing! Decreasing K to : ", n_hash_per_layer)
             LSH_structure.modify_layers()
-            Hash_key_table = make_index_strucutre(LSH_structure, data_matrix)
+            Hash_key_table = make_index_structure(LSH_structure, data_matrix)
         else:
             print("Enough nearest neighbors found! Here are top ", t, ":")
             i = 1
+            result_matching_dict = {}
             for match in matches_list:
                 print("Rank ", match, ": ", matches_list[match])
+                result_matching_dict[match] = matches_list[match]
                 if i == t:
                     break
                 else:
                     i += 1
             break
 
-    return matches_list
+    return result_matching_dict
 
 
-def make_index_strucutre(LSH_structure, data_matrix):
+def make_index_structure(LSH_structure, data_matrix):
     Hash_key_list = get_hash_key(LSH_structure, data_matrix)
     create_dict(LSH_structure, Hash_key_list)
     Hash_key_table = LSH_structure.get_table()
@@ -141,6 +143,6 @@ if __name__ == "__main__":
     data_matrix, labels = create_data_matrix(folder, feature_model, label_mode="all")
     query_vector = np.array(extract_features_for_new_image("../images/" + query_image, feature_model))
     LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
-    Hash_key_table = make_index_strucutre(LSH_structure, data_matrix)
-    matches = get_similar_images(data_matrix,query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure)
+    Hash_key_table = make_index_structure(LSH_structure, data_matrix)
+    matches = get_similar_images(data_matrix,query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t)
     print_outputs()

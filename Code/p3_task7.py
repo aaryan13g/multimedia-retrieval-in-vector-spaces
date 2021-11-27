@@ -32,7 +32,7 @@ def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, ve
     return np.array(relevance_train_data_matrix), relevance_train_labels, np.array(relevance_test_data_matrix), relevance_image_names
 
 
-def relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
+def svm_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
     relevance_train_data_matrix, relevance_train_labels, relevance_test_data_matrix, relevance_image_names = create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
     model = SVM()
     model.fit(relevance_train_data_matrix, relevance_train_labels)
@@ -40,15 +40,13 @@ def relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector
     separator = model.separators["relevant"]
     w, b = separator
     separator_distance_dict = {}
-    final_data_matrix = np.concatenate(relevance_train_data_matrix, relevance_test_data_matrix)
-    final_labels = relevance_train_labels + predicted_labels
+    final_data_matrix = np.vstack((relevance_train_data_matrix, relevance_test_data_matrix))
     for i in range(len(final_data_matrix)):
         img_vector = final_data_matrix[i]
         img_name = relevance_image_names[i]
-        label = final_labels[i]
         distance = np.dot(img_vector, w) - b
         separator_distance_dict[img_name] = distance
-    separator_distance_dict = dict(sorted(separator_distance_dict.items(), key=lambda item: item[1]))
+    separator_distance_dict = dict(sorted(separator_distance_dict.items(), key=lambda item: item[1], reverse=True))
     ranked_results = {}
     i = 1
     for image_name in separator_distance_dict:

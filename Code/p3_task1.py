@@ -25,7 +25,6 @@ class SVM:
         n_samples, n_features = X.shape
         separators = {}
         unique_labels = list(set(y))
-        print(unique_labels)
         for lab in unique_labels:
             print("Finding separator for label: ", lab)
             y_ = [1 if y[l] == lab else -1 for l in range(len(y))]
@@ -44,29 +43,33 @@ class SVM:
                 separators[unique_labels[1]] = (-1 * w, -1 * b)
                 break
         self.separators = separators
-        print(self.separators)
 
     def predict(self, X):
         pred_list = [[]] * len(X)
         for separator in self.separators:
-            w = self.separators[separator][0]
-            b = self.separators[separator][1]
+            w, b = self.separators[separator]
             approx = np.dot(X, w) - b
-            print(approx)
             for i in range(len(approx)):
                 if approx[i] >= 0:
                     pred_list[i] = list(np.append(pred_list[i], separator))
-        print("Predictions!", pred_list)
         final_pred_list = []
         for predicted_labels in pred_list:
             if len(predicted_labels) == 1:
                 final_pred_list.append(predicted_labels[0])
-            elif len(predicted_labels) == 0:
-                default_label = 'original'
-                final_pred_list.append(default_label)
-            else:
-                final_pred_list.append(predicted_labels[-1])
-                # Need to write code for finding distance of each pred with corresponding separator
+                continue
+            if len(predicted_labels) == 0:
+                predicted_labels = list(self.separators.keys())
+            i = 0
+            minn = 99999999999999
+            nearest_label = ""
+            for predicted_label in predicted_labels:
+                w, b = self.separators[predicted_label]
+                distance = abs(np.dot(X[i], w) - b)
+                if distance < minn:
+                    nearest_label = predicted_label
+                    minn = distance
+                i += 1
+            final_pred_list.append(nearest_label)
         return final_pred_list
 
 
@@ -301,11 +304,21 @@ def compute_and_print_outputs(true_labels, pred_labels):
     print(cnf_matrix)
 
 
+def shuffle(data_matrix, labels):
+    labels = np.array(labels)
+    indices = np.arange(data_matrix.shape[0])
+    np.random.shuffle(indices)
+    data_matrix = data_matrix[indices]
+    labels = labels[indices].tolist()
+    return data_matrix, labels
+
+
 if __name__ == "__main__":
     # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "500", "elbp", "5", "testt", "svm"
+    train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "*", "500", "svm"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
-    if k != 'all' or k != '*':
+    data_matrix, labels = shuffle(data_matrix, labels)
+    if k != 'all' and k != '*':
         if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
             print("Existing latent semantics and train matrix found!")
             latent_semantics = np.loadtxt('Latent-Semantics/' + train_folder + '_' + feature_model + '_' + k + '_LS.csv', delimiter=',')
@@ -324,7 +337,7 @@ if __name__ == "__main__":
         similarity_matrix, individual_train_dict = create_similarity_matrix(train_matrix, labels)
         print("Similarity matrix:\n", similarity_matrix)
         test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
-        if k != 'all' or k != '*':
+        if k != 'all' and k != '*':
             test_matrix = test_data_matrix @ latent_semantics
         else:
             test_matrix = test_data_matrix
@@ -346,7 +359,7 @@ if __name__ == "__main__":
         model = train_classifier(train_matrix, labels, classifier)
         print(classifier, " model training completed!")
         test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
-        if k != 'all' or k != '*':
+        if k != 'all' and k != '*':
             test_matrix = test_data_matrix @ latent_semantics
         else:
             test_matrix = test_data_matrix

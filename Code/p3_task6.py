@@ -1,5 +1,5 @@
 import numpy as np
-from p3_task1 import DTree
+from p3_task1 import dtree
 
 
 def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
@@ -32,20 +32,18 @@ def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, ve
     return np.array(relevance_train_data_matrix), relevance_train_labels, np.array(relevance_test_data_matrix), relevance_image_names
 
 
-def relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
+def dtree_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
     relevance_train_data_matrix, relevance_train_labels, relevance_test_data_matrix, relevance_image_names = create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
-    model = DTree()
+    model = dtree()
     model.fit(relevance_train_data_matrix, relevance_train_labels)
     predicted_labels = model.predict(relevance_test_data_matrix)
     separator = model.separators["relevant"]
     w, b = separator
     separator_distance_dict = {}
     final_data_matrix = np.concatenate(relevance_train_data_matrix, relevance_test_data_matrix)
-    final_labels = relevance_train_labels + predicted_labels
     for i in range(len(final_data_matrix)):
         img_vector = final_data_matrix[i]
         img_name = relevance_image_names[i]
-        label = final_labels[i]
         distance = np.dot(img_vector, w) - b
         separator_distance_dict[img_name] = distance
     separator_distance_dict = dict(sorted(separator_distance_dict.items(), key=lambda item: item[1]))
