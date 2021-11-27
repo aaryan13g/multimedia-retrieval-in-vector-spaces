@@ -79,8 +79,8 @@ def create_VA_Query(data_matrix,bits):
     x = np.arange((pow(2,bits))+1)
     l=np.true_divide(x,(pow(2,bits)))
     results=""  
-    print(data_matrix)
-    print(len(data_matrix))
+    # print(data_matrix)
+    # print(len(data_matrix))
     for i in range(len(data_matrix)):
         img=""                 
         for j in range(len(l)-1):
@@ -95,8 +95,8 @@ def create_VA_Query(data_matrix,bits):
                 br='0'+br
             img=img+br
         results=results+img
-    print(results)
-    print(len(results))
+    # print(results)
+    # print(len(results))
     return results
 
 
@@ -140,14 +140,14 @@ def get_bounds(vq,ri,p,bits):
     rq = [rq[i:i+bits] for i in range(0, len(rq), bits)]
     for i in range(len(rq)):
         rq[i]=int(rq[i],2)
-    #rq = list(map(int, rq))
+    # rq = list(map(int, rq))
     
     
-    print(p)
-    print(imgLen)
-    print(rq)
-    print(len(ri))
-    print(len(rq))
+    # print(p)
+    # print(imgLen)
+    # print(rq)
+    # print(len(ri))
+    # print(len(rq))
     for j in range(0,imgLen):
         if(ri[j]<rq[j]):
             l.append(vq[j] - p[ri[j]+1])
@@ -176,23 +176,28 @@ def Candidate(d,i,n,dst,ans):
         ans = temp
     return dst[n],ans
 
-def va_ssa(vq,vi,n,b):
+def va_ssa(vq,vi,n,li):
     dst = np.zeros((n))
     count = 0
     d,dst = InitCandidate(n,dst)
+    
     ans = np.zeros((n))
-    # modData,numBits,p = va_gen(vi,b)
+    rq= create_VA_Query(vq,bits)
+    rq = [rq[i:i+bits] for i in range(0, len(rq), bits)]
+    for i in range(len(rq)):
+        rq[i]=int(rq[i],2)
     
-    for j in range(len(data_matrix)):
-        chunks = [res[j][i:i+bits] for i in range(0, len(res[j]), bits)]
-        temp=[]   
-        for i in range(len(chunks)):
-            temp.append(int(chunks[i],2))    
-        li=get_bounds(image_dm,temp,p,bits)
-        if(li<d):
+    
+    for j in range(len(data_matrix)):   
+        
+        
+        if(li[j]<d):
             count = count+1
-            d,ans = Candidate(distance.minkowski(vq,vi[i],3),i,n-1,dst,ans)
-    
+            
+            
+            d,ans = Candidate(distance.minkowski(rq,vi[j],3),j,n-1,dst,ans)
+            
+    return d,ans
     
 if __name__ == "__main__":
     bits, folder ,image_dm,t= get_input()
@@ -200,19 +205,27 @@ if __name__ == "__main__":
     res,p = create_VA(data_matrix,bits)
     # img= create_VA_Query(image_dm,bits)
     hashed=create_hash(res)
+    for j in range(len(data_matrix)):
+        chunks = [res[j][i:i+bits] for i in range(0, len(res[j]), bits)]
+        temp=[]   
+        for i in range(len(chunks)):
+            temp.append(int(chunks[i],2)) 
+    
+    
+    
+    
     li=[]
+    for j in range(len(data_matrix)):
+        chunks = [res[j][i:i+bits] for i in range(0, len(res[j]), bits)]
+        temp=[]   
+        for i in range(len(chunks)):
+            temp.append(int(chunks[i],2))    
+        li.append(get_bounds(image_dm,temp,p,bits))
+        chunks = list(map(int, chunks))
     
     
-    # for j in range(len(data_matrix)):
-    #     chunks = [res[j][i:i+bits] for i in range(0, len(res[j]), bits)]
-    #     temp=[]   
-    #     for i in range(len(chunks)):
-    #         temp.append(int(chunks[i],2))    
-    #     li.append(get_bounds(image_dm,temp,p,bits))
-        #chunks = list(map(int, chunks))
     
-    
-    # print(li)
-    
-    
+    d,ans=va_ssa(image_dm,temp,t,li)
+    print(ans)
+    print(d)
     
