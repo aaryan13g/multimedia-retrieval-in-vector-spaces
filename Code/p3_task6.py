@@ -1,5 +1,5 @@
 import numpy as np
-from p3_task1 import SVM
+from p3_task1 import DTree
 
 
 def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
@@ -34,7 +34,7 @@ def create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, ve
 
 def relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
     relevance_train_data_matrix, relevance_train_labels, relevance_test_data_matrix, relevance_image_names = create_relevance_space(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
-    model = SVM()
+    model = DTree()
     model.fit(relevance_train_data_matrix, relevance_train_labels)
     predicted_labels = model.predict(relevance_test_data_matrix)
     separator = model.separators["relevant"]

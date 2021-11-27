@@ -4,8 +4,7 @@ import numpy as np
 import random
 import itertools
 import matplotlib.pyplot as plt
-
-import numpy as np
+from p3_task1 import create_data_matrix
 
 
 class HashTable:
@@ -62,31 +61,6 @@ def get_input():
     return int(n_layers), int(n_hash_per_layer), folder
 
 
-def create_data_matrix(folder, feature_model):
-    client = pymongo.MongoClient(
-        "mongodb+srv://mwdbuser:mwdbpassword@cluster0.u1c4q.mongodb.net/Phase2?retryWrites=true&w=majority")
-    db = client.Phase2.InputFeatures
-    path = '../images/' + folder + '/'
-    images = [image for image in os.listdir(path)]
-    data_matrix = []
-    if folder + '_' + feature_model + '.csv' not in os.listdir("Data-matrices"):
-        print(folder + '_' + feature_model + '.csv not found! Creating and saving it...')
-        result = db.find({"img_name": {"$in": images}}, {feature_model: 1})
-        i = 0
-        for document in result:
-            i += 1
-            data_matrix.append(document[feature_model])
-            print("Done: ", i)
-        data_matrix = np.array(data_matrix)
-        np.savetxt("Data-matrices/" + folder + '_' + feature_model + '.csv', data_matrix, delimiter=',')
-    else:
-        print(folder + '_' + feature_model + '.csv found!')
-        data_matrix = np.loadtxt("Data-matrices/" + folder + '_' + feature_model + '.csv', delimiter=',')
-
-    print("Shape of data matrix: ", data_matrix.shape)
-    return data_matrix
-
-
 def create_LSH(inp_dimensions, n_layers, n_hash_per_layer):
     LSH_structure = LSH(n_layers, n_hash_per_layer, inp_dimensions)
     return LSH_structure
@@ -106,7 +80,7 @@ def create_dict(LSH_structure, hash_key_list):
     return
 
 
-def get_similar_images(query_image, t, Hash_key_table, LSH_structure, n_layers, n_hash_per_layer):
+def get_similar_images(labels, query_image, t, Hash_key_table, LSH_structure, n_layers, n_hash_per_layer):
     Hash_key = LSH_structure.get_hash_key(query_image)
     Matches = Hash_key_table[Hash_key]
     return Matches
@@ -114,11 +88,11 @@ def get_similar_images(query_image, t, Hash_key_table, LSH_structure, n_layers, 
 
 if __name__ == "__main__":
     n_layers, n_hash_per_layer, folder = get_input()
-    data_matrix = create_data_matrix(folder, feature_model="elbp")
+    data_matrix, labels = create_data_matrix(folder, feature_model="elbp", label_mode="all")
     LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
     Hash_key_list = get_hash_key(LSH_structure, data_matrix)
     create_dict(LSH_structure, Hash_key_list)
     Hash_key_table = LSH_structure.get_table()
     print(Hash_key_table)
-    matches = get_similar_images(data_matrix[0], 2, Hash_key_table, LSH_structure, n_layers, n_hash_per_layer)
+    matches = get_similar_images(labels, data_matrix[0], 2, Hash_key_table, LSH_structure, n_layers, n_hash_per_layer)
     print(matches)
