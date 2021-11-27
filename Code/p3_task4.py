@@ -50,7 +50,7 @@ class LSH:
 
 def get_input():
     print("Enter space-separated values of 'n_layers', 'n_hash_per_layer', 'folder of images', 'feature model', 'query image', 't':")
-    n_layers, n_hash_per_layer, folder, feature_model, query_img, t = input().split(" ")  # Can take feature model as input too here.
+    n_layers, n_hash_per_layer, folder, feature_model, query_img, t = input().split(" ") 
     return int(n_layers), int(n_hash_per_layer), folder, feature_model, query_img, int(t)
 
 
@@ -81,27 +81,39 @@ def print_outputs():
     pass
 
 
-def get_similar_images(labels, query_image, t, Hash_key_table, LSH_structure, n_layers, n_hash_per_layer):
-    Hash_key = LSH_structure.get_hash_key(query_image)
-    Matches = Hash_key_table[Hash_key]
-    # Need to write code for changing n_hash_per_layer if nearest neighbors not found
+def get_similar_images(data_matrix,n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure):
+    while True:
+        Hash_key = LSH_structure.get_hash_key(query_vector)
+        Matches = Hash_key_table[Hash_key]
+
+        if len(Matches) < t and n_hash_per_layer > 0:
+            print("")
+            n_hash_per_layer -= 1
+            LSH_structure,Hash_key_table = run_everything(n_layers, n_hash_per_layer, data_matrix)
+        else:
+            break
+
     matches_list = {}
     for i in range(len(Matches)):
         match_name = labels[Matches[i]]
         matches_list[i] = match_name
     return matches_list
 
+def run_everything(n_layers, n_hash_per_layer, data_matrix):
+    LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
+    Hash_key_list = get_hash_key(LSH_structure, data_matrix)
+    create_dict(LSH_structure, Hash_key_list)
+    Hash_key_table = LSH_structure.get_table()
+    print_LSH_size(Hash_key_table)
+    return LSH_structure,Hash_key_table
+    
 
 if __name__ == "__main__":
     # n_layers, n_hash_per_layer, folder, feature_model, query_image, t = get_input()
     n_layers, n_hash_per_layer, folder, feature_model, query_image, t = 5, 3, "1000", "elbp", "all/image-cc-1-1.png", 10
     data_matrix, labels = create_data_matrix(folder, feature_model, label_mode="all")
     query_vector = np.array(extract_features_for_new_image("../images/" + query_image, feature_model))
-    LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
-    Hash_key_list = get_hash_key(LSH_structure, data_matrix)
-    create_dict(LSH_structure, Hash_key_list)
-    Hash_key_table = LSH_structure.get_table()
-    print_LSH_size(Hash_key_table)
-    matches = get_similar_images(labels, query_vector, t, Hash_key_table, LSH_structure, n_layers, n_hash_per_layer)
+    LSH_structure,Hash_key_table = run_everything(n_layers, n_hash_per_layer, data_matrix)
+    matches = get_similar_images(data_matrix,n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure)
     print(matches)
     print_outputs()
