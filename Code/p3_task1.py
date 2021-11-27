@@ -24,7 +24,7 @@ class SVM:
     def fit(self, X, y):
         n_samples, n_features = X.shape
         separators = {}
-        unique_labels = set(y)
+        unique_labels = list(set(y))
         print(unique_labels)
         for lab in unique_labels:
             print("Finding separator for label: ", lab)
@@ -40,6 +40,9 @@ class SVM:
                         w -= self.lr * (2 * self.lambda_param * w - np.dot(x_i, y_[idx]))
                         b -= self.lr * y_[idx]
             separators[lab] = (w, b)
+            if len(unique_labels) == 2:     # if only binary classification is needed, then no need to train for separators for both classes.
+                separators[unique_labels[1]] = (-1 * w, -1 * b)
+                break
         self.separators = separators
         print(self.separators)
 
@@ -108,7 +111,10 @@ def create_data_matrix(folder, feature_model, label_mode):
         if len(images) == db.count_documents({"img_name": {"$in": images}}):
             for document in result:
                 data_matrix.append(document[feature_model])
-                labels.append(document[label_mode])
+                if label_mode == "all":
+                    labels.append(document["img_name"])
+                else:
+                    labels.append(document[label_mode])
         else:
             img_names = [doc['img_name'] for doc in result]
             for image in images:
@@ -116,25 +122,32 @@ def create_data_matrix(folder, feature_model, label_mode):
                     print('new image ', image)
                     features = extract_features_for_new_image(train_path + image, feature_model)
                     temp = image[:-4].split('-')
-                    label = ''
                     if label_mode == 'X':
                         label = temp[1]
                     elif label_mode == 'Y':
                         label = temp[2]
                     elif label_mode == 'Z':
                         label = temp[3]
+                    else:
+                        label = image
                     document = {'img_name': image, feature_model: features, label_mode: label}
                 else:
                     document = db.find_one({"img_name": image}, {'img_name': 1, feature_model:1, label_mode: 1, "_id": 0})
                 data_matrix.append((document[feature_model]))
-                labels.append(document[label_mode])
+                if label_mode == "all":
+                    labels.append(document["img_name"])
+                else:
+                    labels.append(document[label_mode])
         data_matrix = np.array(data_matrix)
         np.savetxt("Data-matrices/" + folder + '_' + feature_model + '.csv', data_matrix, delimiter=',')
     else:
         print(folder + '_' + feature_model + '.csv found!')
-        result = db.find({"img_name": {"$in": images}}, {label_mode: 1, "_id": 0})
+        result = db.find({"img_name": {"$in": images}}, {"img_name": 1, label_mode: 1, "_id": 0})
         data_matrix = np.loadtxt("Data-matrices/" + folder + '_' + feature_model + '.csv', delimiter=',')
-        labels = [document[label_mode] for document in result]
+        if label_mode == "all":
+            labels = [document['img_name'] for document in result]
+        else:
+            labels = [document[label_mode] for document in result]
     print("Shape of data matrix: ", data_matrix.shape)
     print("No. of labels: ", len(labels))
     return data_matrix, labels
