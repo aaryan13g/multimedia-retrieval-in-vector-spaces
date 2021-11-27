@@ -15,14 +15,13 @@ class HashTable:
         np.random.seed(69)
         self.projections = np.random.uniform(low=-0.5, high=0.5, size=(self.hash_size, inp_dimensions))
 
+    def modify_projections(self):
+        self.projections = self.projections[:-1, :]
+
     def generate_hash(self, inp_vector):
         bools = (np.dot(inp_vector - 0.5, self.projections.T) > 0).astype('int')
         hash = ''.join(bools.astype('str'))
         return hash
-
-    def __getitem__(self, inp_vec):
-        hash_value = self.generate_hash(inp_vec)
-        return hash_value
 
 
 class LSH:
@@ -38,8 +37,14 @@ class LSH:
     def get_hash_key(self, inp_vec):
         hash_key = ""
         for table in self.layers:
-            hash_key += table[inp_vec]
+            hash_key += table.generate_hash(inp_vec)
         return hash_key
+
+    def modify_layers(self):
+        self.hash_table.clear()
+        for table in self.layers:
+            table.modify_projections()
+        return
 
     def make_hash_table(self, hash_key, index):
         self.hash_table.setdefault(hash_key, []).append(index)
@@ -81,39 +86,61 @@ def print_outputs():
     pass
 
 
-def get_similar_images(data_matrix,n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure):
+def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure):
     while True:
         Hash_key = LSH_structure.get_hash_key(query_vector)
-        Matches = Hash_key_table[Hash_key]
+        Matches =[]
+        if Hash_key in Hash_key_table:
+            Matches = Hash_key_table[Hash_key]
+            dist_dict = {}
+            for i in range(len(Matches)):
+                dist = np.linalg.norm(query_vector - data_matrix[Matches[i] - 1])
+                dist_dict[Matches[i]-1] = dist
+            sorted_dist_dict = dict(sorted(dist_dict.items(), key=lambda item: item[1]))
+            matches_list = {}
+            i = 1
+            for keys in sorted_dist_dict:
+                match_name = labels[keys]
+                matches_list[i] = match_name
+                i += 1
+            print("Ranked Nearest neighbours: ", matches_list)
+            print("")
+        else:
+            print("Nearest Neighbors : None")
 
         if len(Matches) < t and n_hash_per_layer > 0:
-            print("")
             n_hash_per_layer -= 1
-            LSH_structure,Hash_key_table = run_everything(n_layers, n_hash_per_layer, data_matrix)
+            print("Not enough nearest numbers found ! Optimizing! Decreasing K to : ", n_hash_per_layer)
+            LSH_structure.modify_layers()
+            Hash_key_table = make_index_strucutre(LSH_structure, data_matrix)
         else:
+            print("Enough nearest neighbors found! Here are top ", t, ":")
+            i = 1
+            for match in matches_list:
+                print("Rank ", match, ": ", matches_list[match])
+                if i == t:
+                    break
+                else:
+                    i += 1
             break
 
-    matches_list = {}
-    for i in range(len(Matches)):
-        match_name = labels[Matches[i]]
-        matches_list[i] = match_name
     return matches_list
 
-def run_everything(n_layers, n_hash_per_layer, data_matrix):
-    LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
+
+def make_index_strucutre(LSH_structure, data_matrix):
     Hash_key_list = get_hash_key(LSH_structure, data_matrix)
     create_dict(LSH_structure, Hash_key_list)
     Hash_key_table = LSH_structure.get_table()
     print_LSH_size(Hash_key_table)
-    return LSH_structure,Hash_key_table
+    return Hash_key_table
     
 
 if __name__ == "__main__":
     # n_layers, n_hash_per_layer, folder, feature_model, query_image, t = get_input()
-    n_layers, n_hash_per_layer, folder, feature_model, query_image, t = 5, 3, "1000", "elbp", "all/image-cc-1-1.png", 10
+    n_layers, n_hash_per_layer, folder, feature_model, query_image, t = 7, 9, "all", "elbp", "all/image-cc-14-1.png", 10
     data_matrix, labels = create_data_matrix(folder, feature_model, label_mode="all")
     query_vector = np.array(extract_features_for_new_image("../images/" + query_image, feature_model))
-    LSH_structure,Hash_key_table = run_everything(n_layers, n_hash_per_layer, data_matrix)
-    matches = get_similar_images(data_matrix,n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure)
-    print(matches)
+    LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
+    Hash_key_table = make_index_strucutre(LSH_structure, data_matrix)
+    matches = get_similar_images(data_matrix,query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure)
     print_outputs()
