@@ -490,6 +490,7 @@ def compute_and_print_outputs(true_labels, pred_labels):
     print("True Labels | Predicted Labels")
     for true, pred in zip(true_labels, pred_labels):
         print(true + '\t | \t' + pred)
+    print("-------------------------------------------------------------------------")
     print("The accuracy is :\n")
     print(accuracy_score(true_labels, pred_labels))
 
@@ -500,15 +501,16 @@ def compute_and_print_outputs(true_labels, pred_labels):
     TP = np.diag(cnf_matrix)
     TN = cnf_matrix.sum() - (FP + FN + TP)
 
-    FP = FP.astype(float)
-    FN = FN.astype(float)
-    TP = TP.astype(float)
-    TN = TN.astype(float)
+    FP = sum(FP.astype(float))
+    FN = sum(FN.astype(float))
+    TP = sum(TP.astype(float))
+    TN = sum(TN.astype(float))
 
     FPR = FP / (FP + TN)  # This is the false positive rate
     FNR = FN / (TP + FN)  # This is the misses
-
-    print(cnf_matrix)
+    print("Confusion Matrix:\n", cnf_matrix)
+    print("False Positive Rate:", FPR)
+    print("Misses Rate:", FNR)
 
 
 def shuffle(data_matrix, labels):
