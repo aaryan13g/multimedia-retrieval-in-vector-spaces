@@ -309,14 +309,22 @@ def apply_dim_red(data_matrix, k, dim_red='pca'):
 
 
 def calc_distance_between_matrices(matrix1, matrix2):
-    dist_list = []
-    for p in range(len(matrix1)):
-        feature_vector_1 = matrix1[p]
-        feature_vector_2 = matrix2[p]
-        dist = np.linalg.norm(feature_vector_1 - feature_vector_2)
-        dist_list.append(dist)
-    dist_sum = sum(dist_list)
-    return dist_sum / len(matrix1)
+    # dist_list = []
+    sum1 = np.sum(matrix1, axis=0) / len(matrix1)
+    sum2 = np.sum(matrix2, axis=0) / len(matrix2)
+    dist = np.linalg.norm(sum1 - sum2)
+    return dist
+    # for v1 in matrix1:
+    #     for v2 in matrix2:
+    #         dist = np.linalg.norm(v1 - v2)
+    #         dist_list.append(dist)
+    # for p in range(len(matrix1)):
+    #     feature_vector_1 = matrix1[p]
+    #     feature_vector_2 = matrix2[p]
+    #     dist = np.linalg.norm(feature_vector_1 - feature_vector_2)
+    #     dist_list.append(dist)
+    # dist_sum = sum(dist_list)
+    # return dist_sum / len(matrix1)
 
 
 def create_similarity_matrix(train_matrix, train_labels):
@@ -343,6 +351,7 @@ def create_similarity_matrix(train_matrix, train_labels):
             # print("Equal: ", i, " ", j)
             similarity_matrix[i][j] = 0.0
             j = j + 1
+        print("Calculating similarity between", combination[0], "and", combination[1])
         dist_val = calc_distance_between_matrices(sim_dict[combination[0]], sim_dict[combination[1]])
         similarity_matrix[i][j] = dist_val
         similarity_matrix[j][i] = dist_val
@@ -361,13 +370,13 @@ def find_min_distance_with_data_matrix(individual_data_matrix, image_vector):
     dists = []
     for image in individual_data_matrix:
         dists.append(np.linalg.norm(image - image_vector))
-    return sum(dists)/len(dists)
+    return min(dists)
 
 
 def ppr_classifier(similarity_matrix, label_list):
-    similarity_graph = create_sim_graph(similarity_matrix, n=3)
-    nodes = convert_graph_to_nodes(similarity_graph, len(similarity_matrix))
-    query_subjects = ['13']
+    similarity_graph = create_sim_graph(similarity_matrix, label_list, n=3)
+    nodes = convert_graph_to_nodes(similarity_graph, len(similarity_matrix), label_list)
+    query_subjects = ['query']
     i = 0
     while i < 100:
         converge = pagerank_one_iter(nodes, 0.15, query_subjects)
@@ -375,19 +384,19 @@ def ppr_classifier(similarity_matrix, label_list):
             break
         i = i + 1
     print("PageRank converged in ", i, " iterations.")
-    for node in nodes:
-        node.print_node()
+    # for node in nodes:
+    #     nodes[node].print_node()
     match_dict = {}
     maxx = -1
     max_node = None
     for node in nodes:
-        match_dict[node.id] = node.pagerank
-        if node.pagerank > maxx:
-            maxx = node.pagerank
-            max_node = node.id
+        match_dict[nodes[node].id] = nodes[node].pagerank
+        if nodes[node].pagerank > maxx and nodes[node].id != 'query':
+            maxx = nodes[node].pagerank
+            max_node = nodes[node].id
     match_dict = dict(sorted(match_dict.items(), key=lambda item: item[1]))
     print(match_dict)
-    return str(max_node)
+    return max_node
 
 
 def train_classifier(train_matrix, labels, classifier):
@@ -433,6 +442,7 @@ def compute_and_print_outputs(true_labels, pred_labels):
 def shuffle(data_matrix, labels):
     labels = np.array(labels)
     indices = np.arange(data_matrix.shape[0])
+    np.random.seed(69)
     np.random.shuffle(indices)
     data_matrix = data_matrix[indices]
     labels = labels[indices].tolist()
@@ -441,9 +451,8 @@ def shuffle(data_matrix, labels):
 
 if __name__ == "__main__":
     # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "100", "elbp", "30", "100", "dtree"
+    train_folder, feature_model, k, test_folder, classifier = "1000", "elbp", "*", "100", "svm"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
-    data_matrix, labels = shuffle(data_matrix, labels)
     if k != 'all' and k != '*':
         if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
             print("Existing latent semantics and train matrix found!")
@@ -458,17 +467,17 @@ if __name__ == "__main__":
     else:
         train_matrix = data_matrix
         latent_semantics = None
+    train_matrix, labels = shuffle(train_matrix, labels)
     print("Training model now...")
     if classifier == 'ppr':
         similarity_matrix, individual_train_dict = create_similarity_matrix(train_matrix, labels)
-        print("Similarity matrix:\n", similarity_matrix)
         test_data_matrix, true_labels = create_data_matrix(test_folder, feature_model, label_mode='X')
         if k != 'all' and k != '*':
             test_matrix = test_data_matrix @ latent_semantics
         else:
             test_matrix = test_data_matrix
         pred_labels = []
-        for img in test_matrix[:]:
+        for img in test_matrix:
             distance_list = []
             for label in individual_train_dict:
                 distance_list.append(find_min_distance_with_data_matrix(individual_train_dict[label], img))
@@ -478,8 +487,7 @@ if __name__ == "__main__":
             updated_similarity_matrix = np.insert(updated_similarity_matrix, len(similarity_list), similarity_list, axis=1)
             similarity_list = np.append(similarity_list, 1)
             updated_similarity_matrix = np.insert(updated_similarity_matrix, len(similarity_list) - 1, similarity_list, axis=0)
-            print("Updated Similarity Matrix:\n", updated_similarity_matrix)
-            predicted = ppr_classifier(updated_similarity_matrix, list(individual_train_dict.keys()))
+            predicted = ppr_classifier(updated_similarity_matrix, list(individual_train_dict.keys()) + ['query'])
             pred_labels.append(predicted)
     else:
         model = train_classifier(train_matrix, labels, classifier)

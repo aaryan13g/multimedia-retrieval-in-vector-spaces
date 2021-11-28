@@ -34,10 +34,10 @@ class Node:
         print("Page Rank: ", self.pagerank)
 
 
-def pagerank_one_iter(node_list, beta, query_subjects):
+def pagerank_one_iter(node_dict, beta, query_subjects):
     converge = True
-    for node in node_list:
-        differ = node.update_pagerank(beta, query_subjects)
+    for node in node_dict:
+        differ = node_dict[node].update_pagerank(beta, query_subjects)
         if differ > 0.00001:
             converge = False
     if converge is False:
@@ -46,40 +46,40 @@ def pagerank_one_iter(node_list, beta, query_subjects):
         return True
 
 
-def create_sim_graph(sub_sub_similarity_matrix, n):
+def create_sim_graph(sub_sub_similarity_matrix, label_list, n):
     graph = []
     for i in range(len(sub_sub_similarity_matrix)):
         temp = sub_sub_similarity_matrix[i]
         rank = np.argpartition(temp, -(n + 1))[-(n + 1):]
         rank = rank[np.argsort(temp[rank])]
         for j in range(len(rank) - 1):
-            graph.append([i + 1, rank[j] + 1])
+            graph.append([label_list[i], label_list[rank[j]]])
 
     return np.array(graph)
 
 
-def convert_graph_to_nodes(graph, len_total_nodes):
+def convert_graph_to_nodes(graph, len_total_nodes, label_list):
     parent_dict = {}
     child_dict = {}
     for i in range(len_total_nodes):
-        parent_dict[i + 1] = []
-        child_dict[i + 1] = []
+        parent_dict[label_list[i]] = []
+        child_dict[label_list[i]] = []
     for node_pair in graph:
         parent = node_pair[0]
         child = node_pair[1]
         child_dict[parent].append(child)
         parent_dict[child].append(parent)
-    nodes = []
+    nodes = {}
     for i in range(len_total_nodes):
-        id = i + 1
+        id = label_list[i]
         node = Node(id, len_total_nodes)
-        nodes.append(node)
+        nodes[id] = node
     for parent in child_dict:
         for child in child_dict[parent]:
-            nodes[parent-1].children.append(nodes[child-1])
+            nodes[parent].children.append(nodes[child])
     for child in parent_dict:
         for parent in parent_dict[child]:
-            nodes[child-1].parents.append(nodes[parent-1])
+            nodes[child].parents.append(nodes[parent])
     return nodes
 
 

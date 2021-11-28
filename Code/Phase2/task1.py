@@ -158,7 +158,7 @@ def distance_kmeans(A, B, squared=False):  # A is object matrix 40Xk(NXk) B is c
 
 def kmeans(k, data_matrix):
     km = KMeans(n_clusters=int(k)).fit_transform(data_matrix)
-    LS = data_matrix.transpose() @ WT
+    LS = data_matrix.transpose() @ km
     return LS, km
 
 
