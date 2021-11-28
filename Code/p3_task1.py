@@ -5,6 +5,7 @@ import random
 import math
 import itertools
 import matplotlib.pyplot as plt
+from collections import Counter
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import LabelEncoder
@@ -14,136 +15,207 @@ from Phase2.task1 import pca, svd, kmeans, lda
 from Phase2.task9 import Node, create_sim_graph, convert_graph_to_nodes, pagerank_one_iter
 
 
-class DTree(object):
-    def __init__(self):
-        self.depth = 0
-        self.max_depth = 3
-        self.trees = None
+class Node:
+    '''
+    Helper class which implements a single tree node.
+    '''
+    def __init__(self, feature=None, threshold=None, data_left=None, data_right=None, gain=None, value=None):
+        self.feature = feature
+        self.threshold = threshold
+        self.data_left = data_left
+        self.data_right = data_right
+        self.gain = gain
+        self.value = value
+
+
+class DTree:
+    '''
+    Class which implements a decision tree classifier algorithm.
+    '''
+    def __init__(self, min_samples_split=2, max_depth=5):
+        self.min_samples_split = min_samples_split
+        self.max_depth = max_depth
+        self.root = None
         self.unique_labels = None
 
-    def entropy_func(self, c, n):
-        """
-        The math formula
-        """
-        return -(c*1.0/n) * math.log(c*1.0/n, 2)
+        
+    @staticmethod
+    def _entropy(s):
+        '''
+        Helper function, calculates entropy from an array of integer values.
+        
+        :param s: list
+        :return: float, entropy value
+        '''
+        # Convert to integers to avoid runtime errors
+        counts = np.bincount(np.array(s, dtype=np.int64))
+        # Probabilities of each class label
+        percentages = counts / len(s)
 
-    def entropy_cal(self, c1, c2):
-        """
-        Returns entropy of a group of data
-        c1: count of one class
-        c2: count of another class
-        """
-        if c1== 0 or c2 == 0:  # when there is only one class in the group, entropy is 0
-            return 0
-        return self.entropy_func(c1, c1+c2) + self.entropy_func(c2, c1+c2)
+        # Caclulate entropy
+        entropy = 0
+        for pct in percentages:
+            if pct > 0:
+                entropy += pct * np.log2(pct)
+        return -entropy
+    
+    def _information_gain(self, parent, left_child, right_child):
+        '''
+        Helper function, calculates information gain from a parent and two child nodes.
+        
+        :param parent: list, the parent node
+        :param left_child: list, left child of a parent
+        :param right_child: list, right child of a parent
+        :return: float, information gain
+        '''
+        num_left = len(left_child) / len(parent)
+        num_right = len(right_child) / len(parent)
+        
+        # One-liner which implements the previously discussed formula
+        return self._entropy(parent) - (num_left * self._entropy(left_child) + num_right * self._entropy(right_child))
+    
+    def _best_split(self, X, y):
+        '''
+        Helper function, calculates the best split for given features and target
+        
+        :param X: np.array, features
+        :param y: np.array or list, target
+        :return: dict
+        '''
+        best_split = {}
+        best_info_gain = -1
+        n_rows, n_cols = X.shape
+        
+        # For every dataset feature
+        for f_idx in range(n_cols):
+            X_curr = X[:, f_idx]
+            # For every unique value of that feature
+            for threshold in np.unique(X_curr):
+                # Construct a dataset and split it to the left and right parts
+                # Left part includes records lower or equal to the threshold
+                # Right part includes records higher than the threshold
+                df = np.concatenate((X, y.reshape(1, -1).T), axis=1)
+                df_left = np.array([row for row in df if row[f_idx] <= threshold])
+                df_right = np.array([row for row in df if row[f_idx] > threshold])
 
-    # get the entropy of one big circle showing above
-    def entropy_of_one_division(self, division): 
-        """
-        Returns entropy of a divided group of data
-        Data may have multiple classes
-        """
-        s = 0
-        n = len(division)
-        classes = set(division)
-        for c in classes:   # for each class, get entropy
-            n_c = sum(division==c)
-            e = n_c*1.0/n * self.entropy_cal(sum(division==c), sum(division!=c)) # weighted avg
-            s += e
-        return s, n
+                # Do the calculation only if there's data in both subsets
+                if len(df_left) > 0 and len(df_right) > 0:
+                    # Obtain the value of the target variable for subsets
+                    y = df[:, -1]
+                    y_left = df_left[:, -1]
+                    y_right = df_right[:, -1]
 
-    # The whole entropy of two big circles combined
-    def get_entropy(self, y_predict, y_real):
-        """
-        Returns entropy of a split
-        y_predict is the split decision, True/Fasle, and y_true can be multi class
-        """
-        if len(y_predict) != len(y_real):
-            print('They have to be the same length')
-            return None
-        n = len(y_real)
-        s_true, n_true = self.entropy_of_one_division(y_real[y_predict]) # left hand side entropy
-        s_false, n_false = self.entropy_of_one_division(y_real[~y_predict]) # right hand side entropy
-        s = n_true*1.0/n * s_true + n_false*1.0/n * s_false # overall entropy, again weighted average
-        return s
+                    # Caclulate the information gain and save the split parameters
+                    # if the current split if better then the previous best
+                    gain = self._information_gain(y, y_left, y_right)
+                    if gain > best_info_gain:
+                        best_split = {
+                            'feature_index': f_idx,
+                            'threshold': threshold,
+                            'df_left': df_left,
+                            'df_right': df_right,
+                            'gain': gain
+                        }
+                        best_info_gain = gain
+        return best_split
+    
+    def _build(self, X, y, depth=0):
+        '''
+        Helper recursive function, used to build a decision tree from the input data.
+        
+        :param X: np.array, features
+        :param y: np.array or list, target
+        :param depth: current depth of a tree, used as a stopping criteria
+        :return: Node
+        '''
+        n_rows, n_cols = X.shape
+        
+        # Check to see if a node should be leaf node
+        if n_rows >= self.min_samples_split and depth <= self.max_depth:
+            # Get the best split
+            best = self._best_split(X, y)
+            # If the split isn't pure
+            if best['gain'] > 0:
+                # Build a tree on the left
+                left = self._build(
+                    X=best['df_left'][:, :-1], 
+                    y=best['df_left'][:, -1], 
+                    depth=depth + 1
+                )
+                right = self._build(
+                    X=best['df_right'][:, :-1], 
+                    y=best['df_right'][:, -1], 
+                    depth=depth + 1
+                )
+                return Node(
+                    feature=best['feature_index'], 
+                    threshold=best['threshold'], 
+                    data_left=left, 
+                    data_right=right, 
+                    gain=best['gain']
+                )
+        # Leaf node - value is the most common target value 
+        return Node(
+            value=Counter(y).most_common(1)[0][0]
+        )
+    
+    def fitting(self, X, y):
+        '''
+        Function used to train a decision tree classifier model.
+        
+        :param X: np.array, features
+        :param y: np.array or list, target
+        :return: None
+        '''
+        # Call a recursive function to build the tree
+        self.root = self._build(X, y)
+        
+    def fit(self, X, y):
+        '''
+        Function used to train a decision tree classifier model.
+        
+        :param X: np.array, features
+        :param y: np.array or list, target
+        :return: None
+        '''
+        self.unique_labels = list(set(y))
+        y = np.array([self.unique_labels.index(lab) for lab in y])       
+        # Call a recursive function to build the tree
+        self.root = self._build(X, y)
 
-    def all_same(self, items):
-        return all(x == items[0] for x in items)
-
-    def _get_prediction(self, row):
-        cur_layer = self.trees
-        while cur_layer.get('cutoff'):
-            if row[cur_layer['index_col']] < cur_layer['cutoff']:
-                if cur_layer['left'] is None:
-                    break
-                cur_layer = cur_layer['left']
-            else:
-                if cur_layer['right'] is None:
-                    break
-                cur_layer = cur_layer['right']
-        print('val ',cur_layer.get('val'))
-        return cur_layer.get('val')
-
-    def predict(self, x):
-        tree = self.trees
-        results = np.array([0]*len(x))
-        for i, c in enumerate(x):
-            results[i] = self._get_prediction(c)
+    def _predict(self, x, tree):
+        '''
+        Helper recursive function, used to predict a single instance (tree traversal).
+        
+        :param x: single observation
+        :param tree: built tree
+        :return: float, predicted class
+        '''
+        # Leaf node
+        if tree.value != None:
+            return tree.value
+        feature_value = x[tree.feature]
+        
+        # Go to the left
+        if feature_value <= tree.threshold:
+            return self._predict(x=x, tree=tree.data_left)
+        
+        # Go to the right
+        if feature_value > tree.threshold:
+            return self._predict(x=x, tree=tree.data_right)
+        
+    def predict(self, X):
+        '''
+        Function used to classify new instances.
+        
+        :param X: np.array, features
+        :return: np.array, predicted classes
+        '''
+        # Call the _predict() function for every observation
+        results = [int(self._predict(x, self.root)) for x in X]
         labels = [self.unique_labels[results[i]] for i in range(len(results))]
         return labels
-    
-    def find_best_split(self, col, y):
-        min_entropy = 10
-        n = len(y)
-        for value in set(col):
-            y_predict = col < value
-            my_entropy = self.get_entropy(y_predict, y)
-            if my_entropy <= min_entropy:
-                min_entropy = my_entropy
-                cutoff = value
-        return min_entropy, cutoff
 
-    def find_best_split_of_all(self, x, y):
-        col = None
-        min_entropy = 1
-        cutoff = None
-        for i, c in enumerate(x.T):
-            entropy, cur_cutoff = self.find_best_split(c, y)
-            if entropy == 0:    # find the first perfect cutoff. Stop Iterating
-                return i, cur_cutoff, entropy
-            elif entropy <= min_entropy:
-                min_entropy = entropy
-                col = i
-                cutoff = cur_cutoff
-        return col, cutoff, min_entropy
-    
-    def fitting(self, x, y, par_node={}, depth=0):
-        if par_node is None: 
-            return None
-        elif len(y) == 0:
-            return None
-        elif self.all_same(y):
-            return {'val':y[0]}
-        elif depth >= self.max_depth:
-            return None
-        else:
-            col, cutoff, entropy = self.find_best_split_of_all(x, y)    # find one split given an information gain 
-            print("Best Split found with entropy ", entropy)
-            y_left = y[x[:, col] < cutoff]
-            y_right = y[x[:, col] >= cutoff]
-            par_node = {'col': x[0:, col], 'index_col':col,
-                        'cutoff':cutoff,
-                       'val': np.round(np.mean(y))}
-            par_node['left'] = self.fitting(x[x[:, col] < cutoff], y_left, {}, depth+1)
-            par_node['right'] = self.fitting(x[x[:, col] >= cutoff], y_right, {}, depth+1)
-            self.depth += 1 
-            self.trees = par_node
-            print(par_node)
-
-    def fit(self, x, y):
-        self.unique_labels = list(set(y))
-        y = np.array([self.unique_labels.index(lab) for lab in y])
-        self.fitting(x, y)
 
 class SVM:
     def __init__(self, learning_rate=0.001, lambda_param=0.01, n_iters=1000):
@@ -451,7 +523,7 @@ def shuffle(data_matrix, labels):
 
 if __name__ == "__main__":
     # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "1000", "elbp", "*", "100", "svm"
+    train_folder, feature_model, k, test_folder, classifier = "500", "elbp", "50", "100", "dtree"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     if k != 'all' and k != '*':
         if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
