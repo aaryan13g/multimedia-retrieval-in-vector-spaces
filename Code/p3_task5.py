@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import distance
 from p3_task1 import extract_features_for_new_image, create_data_matrix
-
+from p3_task4 import print_FP_and_miss_rates
+import sys
 
 hash_table = dict()
 
@@ -87,8 +88,13 @@ def InitCandidate(n,dst):
         dst[i] = float('inf')
     return float('inf'),dst
 
-def Candidate(d,i,n,dst,ans):
+def Candidate(d,i,n,dst,ans,count):
+    
     if(d<dst[n]):
+        all_nearest_images[i]=labels[int(i)]
+        
+
+        count= count +1
         dst[n] = d
         ans[n] = i
         temp = []
@@ -97,35 +103,70 @@ def Candidate(d,i,n,dst,ans):
         for i in range(0,len(sort_vals)):
             temp.append(ans[sort_vals[i]])
         ans = temp
-    return dst[n],ans
+    return dst[n],ans,count,all_nearest_images
 
-def va_ssa(vq,vi,n,li):
+def va_ssa(vq,vi,n,li,count,all_nearest_images):
     dst = np.zeros((n))
-    count = 0
+    
     d,dst = InitCandidate(n,dst)
     ans = np.zeros((n))
     rq, _ = create_VA(vq,bits)
     rq = [int(rq[0][i:i+bits], 2) for i in range(0, len(rq[0]), bits)]
-    for j in range(len(data_matrix)):
-        if(li[j]<d):
-            count = count+1
-            d,ans = Candidate(distance.minkowski(rq,vi[j],3),j,n-1,dst,ans)
-    return d,ans
+    #print(rq)
     
+    for j in range(len(data_matrix)):       
+        if(li[j]<d):            
+            d,ans,count,all_nearest_images = Candidate(distance.minkowski(rq,vi[j],3),j,n-1,dst,ans,count)
+            
+    return d,ans,count,all_nearest_images
+    
+def get_similar_images(ans,labels):
+    similar_images={}    
+    k=1
+    for i in ans:
+        similar_images[k]=labels[int(i)]
+        k=k+1
+    return similar_images
+
+def print_LSH_size(Hash_key_table):
+    print("Size of LSH structure: ", sys.getsizeof(Hash_key_table), " bytes")
+
 if __name__ == "__main__":
     bits, folder, query_image, feature_model, t= get_input()
     data_matrix, labels = create_data_matrix(folder, feature_model, label_mode="all")
     res, p = create_VA(data_matrix, bits)
     hashed=create_hash(res)
     li=[]
+    temp1=[]
     for j in range(len(data_matrix)):
         chunks = [res[j][i:i+bits] for i in range(0, len(res[j]), bits)]
-        temp=[]   
+        temp=[]
         for i in range(len(chunks)):
-            temp.append(int(chunks[i],2))    
+            temp.append(int(chunks[i],2))
+        temp1.append(temp)
         li.append(get_bounds(query_image,temp,p,bits))
         chunks = list(map(int, chunks))
-    d,ans=va_ssa(query_image,temp,t,li)
+    count=0 
+    all_nearest_images={}
+    d,ans,count,all_nearest_images=va_ssa(query_image,temp1,t,li,count,all_nearest_images)
     print(ans)
     print(d)
-    
+    # print(count)
+    similar_images=get_similar_images(ans,labels)
+    print("\nThe nearest images are : \n")
+    for keys in similar_images:
+        print("Rank ", keys ," :" , similar_images[keys])
+
+    print("-------------------------------------------------------------------------------------------------")
+    ani={}
+    i=1
+    for keys in all_nearest_images:
+            ani[i]=all_nearest_images[keys]
+            i=i+1
+            # print("Rank ", keys ," :" , all_nearest_images[keys])   
+
+    for keys in ani:
+        print("Rank ", keys ," :" , ani[keys]) 
+
+    print_FP_and_miss_rates(similar_images,ani,query_image ,data_matrix,labels)
+    print_LSH_size(hashed)

@@ -4,7 +4,7 @@ from p3_task1 import create_data_matrix, apply_dim_red, extract_features_for_new
 from p3_task4 import create_LSH, get_similar_images, make_index_structure
 from p3_task7 import svm_relevance_feedback
 from p3_task6 import dtree_relevance_feedback
-
+from p3_task5 import *
 
 def create_vector_space(input_folder, feature_model, dim_red, k):
     data_matrix, labels = create_data_matrix(input_folder, feature_model, label_mode='all')
@@ -32,9 +32,25 @@ def run_LSH(L, K, vector_space_matrix, labels, query_img_vector, t):
     top_t_matches, _ = get_similar_images(vector_space_matrix, query_img_vector, L, K, labels, Hash_key_table, LSH_structure, t)
     return top_t_matches
 
-
-def run_VA(b, vector_space_matrix, labels, query_img_vector, t):
-    pass
+def run_VA(bits, vector_space_matrix, labels, query_img_vector, t):
+    query_img_vector=np.array([query_img_vector])
+    res, p = create_VA(vector_space_matrix, bits)
+    hashed=create_hash(res)
+    li=[]
+    temp1=[]
+    for j in range(len(vector_space_matrix)):
+        chunks = [res[j][i:i+bits] for i in range(0, len(res[j]), bits)]
+        temp=[]
+        for i in range(len(chunks)):
+            temp.append(int(chunks[i],2))
+        temp1.append(temp)
+        li.append(get_bounds(query_img_vector,temp,p,bits))
+        chunks = list(map(int, chunks))
+    count=0 
+    all_nearest_images={}
+    d,ans,count,all_nearest_images=va_ssa(query_img_vector,temp1,t,li,count,all_nearest_images)
+    similar_images=get_similar_images(ans,labels)
+    return similar_images
 
 
 def SVM_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels):
