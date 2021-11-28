@@ -120,7 +120,7 @@ def va_ssa(vq,vi,n,li,count,all_nearest_images):
             
     return d,ans,count,all_nearest_images
     
-def get_similar_images(ans):
+def get_similar_images(ans,labels):
     similar_images={}    
     k=1
     for i in ans:
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     print(ans)
     print(d)
     # print(count)
-    similar_images=get_similar_images(ans)
+    similar_images=get_similar_images(ans,labels)
     print("\nThe nearest images are : \n")
     for keys in similar_images:
         print("Rank ", keys ," :" , similar_images[keys])
