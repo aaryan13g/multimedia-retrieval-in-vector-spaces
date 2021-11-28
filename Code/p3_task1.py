@@ -15,12 +15,11 @@ from Phase2.task9 import Node, create_sim_graph, convert_graph_to_nodes, pageran
 
 
 class DTree(object):
-    def __init__(self, types, max_depth):
+    def __init__(self):
         self.depth = 0
-        self.max_depth = max_depth
-        self.types = types
+        self.max_depth = 3
         self.trees = None
-
+        self.unique_labels = None
 
     def entropy_func(self, c, n):
         """
@@ -73,10 +72,7 @@ class DTree(object):
 
     def _get_prediction(self, row):
         cur_layer = self.trees
-        # i = 0
         while cur_layer.get('cutoff'):
-            # print(i)
-            # i=i+1
             if row[cur_layer['index_col']] < cur_layer['cutoff']:
                 if cur_layer['left'] is None:
                     break
@@ -93,7 +89,7 @@ class DTree(object):
         results = np.array([0]*len(x))
         for i, c in enumerate(x):
             results[i] = self._get_prediction(c)
-        labels = [self.types[results[i]] for i in range(len(results))]
+        labels = [self.unique_labels[results[i]] for i in range(len(results))]
         return labels
     
     def find_best_split(self, col, y):
@@ -121,7 +117,7 @@ class DTree(object):
                 cutoff = cur_cutoff
         return col, cutoff, min_entropy
     
-    def fit(self, x, y, par_node={}, depth=0):
+    def fitting(self, x, y, par_node={}, depth=0):
         if par_node is None: 
             return None
         elif len(y) == 0:
@@ -138,12 +134,16 @@ class DTree(object):
             par_node = {'col': x[0:, col], 'index_col':col,
                         'cutoff':cutoff,
                        'val': np.round(np.mean(y))}
-            par_node['left'] = self.fit(x[x[:, col] < cutoff], y_left, {}, depth+1)
-            par_node['right'] = self.fit(x[x[:, col] >= cutoff], y_right, {}, depth+1)
+            par_node['left'] = self.fitting(x[x[:, col] < cutoff], y_left, {}, depth+1)
+            par_node['right'] = self.fitting(x[x[:, col] >= cutoff], y_right, {}, depth+1)
             self.depth += 1 
             self.trees = par_node
             print(par_node)
 
+    def fit(self, x, y):
+        self.unique_labels = list(set(y))
+        y = np.array([self.unique_labels.index(lab) for lab in y])
+        self.fitting(x, y)
 
 class SVM:
     def __init__(self, learning_rate=0.001, lambda_param=0.01, n_iters=1000):
@@ -393,11 +393,7 @@ def ppr_classifier(similarity_matrix, label_list):
 def train_classifier(train_matrix, labels, classifier):
     model = None
     if classifier == "dtree":
-        # unique_labels = list(set(labels))
-        labels = LabelEncoder().fit_transform(labels)
-        types = ["cc", "con", "emboss", "jitter", "neg", "noise01", "noise02", "original", "poster", "rot", "smooth", "stipple"]
-        # label_dict = {i : unique_labels[i] for i in range(len(unique_labels))}
-        model = DTree(types, max_depth=7)
+        model = DTree()
     elif classifier == "svm":
         model = SVM()
     model.fit(train_matrix, labels)
@@ -445,7 +441,7 @@ def shuffle(data_matrix, labels):
 
 if __name__ == "__main__":
     # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "100", "elbp", "20", "testt", "dtree"
+    train_folder, feature_model, k, test_folder, classifier = "100", "elbp", "30", "100", "dtree"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     data_matrix, labels = shuffle(data_matrix, labels)
     if k != 'all' and k != '*':
