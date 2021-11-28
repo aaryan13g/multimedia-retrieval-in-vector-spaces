@@ -29,8 +29,8 @@ def transform_query(query_img, feature_model, latent_semantics):
 def run_LSH(L, K, vector_space_matrix, labels, query_img_vector, t):
     LSH_structure = create_LSH(len(vector_space_matrix[0]), L, K)
     Hash_key_table = make_index_structure(LSH_structure, vector_space_matrix)
-    matches = get_similar_images(vector_space_matrix, query_img_vector, L, K, labels, Hash_key_table, LSH_structure, t)
-    return matches
+    top_t_matches, _ = get_similar_images(vector_space_matrix, query_img_vector, L, K, labels, Hash_key_table, LSH_structure, t)
+    return top_t_matches
 
 
 def run_VA(b, vector_space_matrix, labels, query_img_vector, t):

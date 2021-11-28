@@ -82,11 +82,9 @@ def print_LSH_size(Hash_key_table):
     print("Size of LSH structure: ", sys.getsizeof(Hash_key_table), " bytes")
 
 
-def print_outputs():
-    pass
-
-
 def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t):
+    total_buckets = 0
+    matches_list = {}
     while True:
         Hash_key = LSH_structure.get_hash_key(query_vector)
         Matches =[]
@@ -107,7 +105,8 @@ def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, la
             print("")
         else:
             print("Nearest Neighbors : None")
-
+        print("Buckets searched at this step:", n_layers * n_hash_per_layer)
+        total_buckets += n_layers * n_hash_per_layer
         if len(Matches) < t and n_hash_per_layer > 0:
             n_hash_per_layer -= 1
             print("Not enough nearest numbers found ! Optimizing! Decreasing K to : ", n_hash_per_layer)
@@ -124,9 +123,11 @@ def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, la
                     break
                 else:
                     i += 1
+            print("\n----------Total number of buckets searched: ", total_buckets, "----------\n")
+            print("Total number of unique and overall images considered (it's the same): ", len(matches_list))
             break
 
-    return result_matching_dict
+    return result_matching_dict, matches_list
 
 
 def make_index_structure(LSH_structure, data_matrix):
@@ -135,14 +136,45 @@ def make_index_structure(LSH_structure, data_matrix):
     Hash_key_table = LSH_structure.get_table()
     print_LSH_size(Hash_key_table)
     return Hash_key_table
+
+
+def print_FP_and_miss_rates(top_t_matches, all_nearest_matches, query_vector, data_matrix, labels):
+    t = len(top_t_matches)
+    print("-----------------------------------------------------------------------")
+    print("Performing sequential scan to identify true top neighbors...")
+    neighbors_distances = {}
+    for i in range(len(data_matrix)):
+        neighbors_distances[labels[i]] = np.linalg.norm(data_matrix[i] - query_vector)
+    neighbors_distances = dict(sorted(neighbors_distances.items(), key=lambda item: item[1]))
+    true_neighbors = {}
+    j = 1
+    for img in neighbors_distances:
+        true_neighbors[j] = img
+        j += 1
+        if j > t:
+            break
+    print("Top " + str(t) + " true neighbors from sequential scan:")
+    for rank in true_neighbors:
+        print("Rank ", rank, ": ", true_neighbors[rank])
+    top_t_matches_set = set(list(top_t_matches.values()))
+    true_neighbors_set = set(list(true_neighbors.values()))
+    correct_matches = top_t_matches_set.intersection(true_neighbors_set)
+    print("Correct matches: ", len(correct_matches))
+    print(correct_matches)
+    fp_rate = float(len(set(list(all_nearest_matches.values())) - correct_matches)) / float(t)
+    miss_rate = float(t - len(correct_matches)) / float(t)
+    print("-----------------------------------------------------------------------")
+    print("False Positive Rate: ", fp_rate)
+    print("Miss Rate: ", miss_rate)
+    print("-----------------------------------------------------------------------")
     
 
 if __name__ == "__main__":
     # n_layers, n_hash_per_layer, folder, feature_model, query_image, t = get_input()
-    n_layers, n_hash_per_layer, folder, feature_model, query_image, t = 7, 9, "all", "elbp", "all/image-cc-14-1.png", 10
+    n_layers, n_hash_per_layer, folder, feature_model, query_image, t = 5, 8, "100", "elbp", "all/image-cc-1-9.png", 20
     data_matrix, labels = create_data_matrix(folder, feature_model, label_mode="all")
     query_vector = np.array(extract_features_for_new_image("../images/" + query_image, feature_model))
     LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
     Hash_key_table = make_index_structure(LSH_structure, data_matrix)
-    matches = get_similar_images(data_matrix,query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t)
-    print_outputs()
+    top_t_matches, all_nearest_matches = get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t)
+    print_FP_and_miss_rates(top_t_matches, all_nearest_matches, query_vector, data_matrix, labels)
