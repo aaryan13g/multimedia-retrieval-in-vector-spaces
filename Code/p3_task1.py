@@ -105,7 +105,7 @@ class DTree:
                     y_left = df_left[:, -1]
                     y_right = df_right[:, -1]
 
-                    # Caclulate the information gain and save the split parameters
+                    # Calculate the information gain and save the split parameters
                     # if the current split if better then the previous best
                     gain = self._information_gain(y, y_left, y_right)
                     if gain > best_info_gain:
