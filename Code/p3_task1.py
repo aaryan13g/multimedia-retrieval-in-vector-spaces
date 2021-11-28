@@ -2,16 +2,147 @@ import os
 import pymongo
 import numpy as np
 import random
+import math
 import itertools
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.svm import SVC
+from sklearn.preprocessing import LabelEncoder
 from PIL import Image
 from Phase1.task1 import color_moments_model, extract_lbp, histogram_of_oriented_gradients_model
 from Phase2.task1 import pca, svd, kmeans, lda
 from Phase2.task9 import Node, create_sim_graph, convert_graph_to_nodes, pagerank_one_iter
+
+
+class DTree(object):
+    def __init__(self, types, max_depth):
+        self.depth = 0
+        self.max_depth = max_depth
+        self.types = types
+        self.trees = None
+
+
+    def entropy_func(self, c, n):
+        """
+        The math formula
+        """
+        return -(c*1.0/n) * math.log(c*1.0/n, 2)
+
+    def entropy_cal(self, c1, c2):
+        """
+        Returns entropy of a group of data
+        c1: count of one class
+        c2: count of another class
+        """
+        if c1== 0 or c2 == 0:  # when there is only one class in the group, entropy is 0
+            return 0
+        return self.entropy_func(c1, c1+c2) + self.entropy_func(c2, c1+c2)
+
+    # get the entropy of one big circle showing above
+    def entropy_of_one_division(self, division): 
+        """
+        Returns entropy of a divided group of data
+        Data may have multiple classes
+        """
+        s = 0
+        n = len(division)
+        classes = set(division)
+        for c in classes:   # for each class, get entropy
+            n_c = sum(division==c)
+            e = n_c*1.0/n * self.entropy_cal(sum(division==c), sum(division!=c)) # weighted avg
+            s += e
+        return s, n
+
+    # The whole entropy of two big circles combined
+    def get_entropy(self, y_predict, y_real):
+        """
+        Returns entropy of a split
+        y_predict is the split decision, True/Fasle, and y_true can be multi class
+        """
+        if len(y_predict) != len(y_real):
+            print('They have to be the same length')
+            return None
+        n = len(y_real)
+        s_true, n_true = self.entropy_of_one_division(y_real[y_predict]) # left hand side entropy
+        s_false, n_false = self.entropy_of_one_division(y_real[~y_predict]) # right hand side entropy
+        s = n_true*1.0/n * s_true + n_false*1.0/n * s_false # overall entropy, again weighted average
+        return s
+
+    def all_same(self, items):
+        return all(x == items[0] for x in items)
+
+    def _get_prediction(self, row):
+        cur_layer = self.trees
+        # i = 0
+        while cur_layer.get('cutoff'):
+            # print(i)
+            # i=i+1
+            if row[cur_layer['index_col']] < cur_layer['cutoff']:
+                if cur_layer['left'] is None:
+                    break
+                cur_layer = cur_layer['left']
+            else:
+                if cur_layer['right'] is None:
+                    break
+                cur_layer = cur_layer['right']
+        print('val ',cur_layer.get('val'))
+        return cur_layer.get('val')
+
+    def predict(self, x):
+        tree = self.trees
+        results = np.array([0]*len(x))
+        for i, c in enumerate(x):
+            results[i] = self._get_prediction(c)
+        labels = [self.types[results[i]] for i in range(len(results))]
+        return labels
+    
+    def find_best_split(self, col, y):
+        min_entropy = 10
+        n = len(y)
+        for value in set(col):
+            y_predict = col < value
+            my_entropy = self.get_entropy(y_predict, y)
+            if my_entropy <= min_entropy:
+                min_entropy = my_entropy
+                cutoff = value
+        return min_entropy, cutoff
+
+    def find_best_split_of_all(self, x, y):
+        col = None
+        min_entropy = 1
+        cutoff = None
+        for i, c in enumerate(x.T):
+            entropy, cur_cutoff = self.find_best_split(c, y)
+            if entropy == 0:    # find the first perfect cutoff. Stop Iterating
+                return i, cur_cutoff, entropy
+            elif entropy <= min_entropy:
+                min_entropy = entropy
+                col = i
+                cutoff = cur_cutoff
+        return col, cutoff, min_entropy
+    
+    def fit(self, x, y, par_node={}, depth=0):
+        if par_node is None: 
+            return None
+        elif len(y) == 0:
+            return None
+        elif self.all_same(y):
+            return {'val':y[0]}
+        elif depth >= self.max_depth:
+            return None
+        else:
+            col, cutoff, entropy = self.find_best_split_of_all(x, y)    # find one split given an information gain 
+            print("Best Split found with entropy ", entropy)
+            y_left = y[x[:, col] < cutoff]
+            y_right = y[x[:, col] >= cutoff]
+            par_node = {'col': x[0:, col], 'index_col':col,
+                        'cutoff':cutoff,
+                       'val': np.round(np.mean(y))}
+            par_node['left'] = self.fit(x[x[:, col] < cutoff], y_left, {}, depth+1)
+            par_node['right'] = self.fit(x[x[:, col] >= cutoff], y_right, {}, depth+1)
+            self.depth += 1 
+            self.trees = par_node
+            print(par_node)
 
 
 class SVM:
@@ -172,14 +303,9 @@ def apply_dim_red(data_matrix, k, dim_red='pca'):
     return LS, WT
 
 
-def dtree():
-    model_dtree = DecisionTreeClassifier(class_weight=None, criterion='entropy', max_depth=None, max_features=None, max_leaf_nodes=None, min_impurity_decrease=0.0, min_impurity_split=None, min_samples_leaf=1, min_samples_split=6, min_weight_fraction_leaf=0.0, random_state=None, splitter='best')
-    return model_dtree
-
-
-def svm():
-    svm_model = SVC()
-    return svm_model
+# def dtree():
+#     model_dtree = DecisionTreeClassifier(class_weight=None, criterion='entropy', max_depth=None, max_features=None, max_leaf_nodes=None, min_impurity_decrease=0.0, min_impurity_split=None, min_samples_leaf=1, min_samples_split=6, min_weight_fraction_leaf=0.0, random_state=None, splitter='best')
+#     return model_dtree
 
 
 def calc_distance_between_matrices(matrix1, matrix2):
@@ -267,7 +393,11 @@ def ppr_classifier(similarity_matrix, label_list):
 def train_classifier(train_matrix, labels, classifier):
     model = None
     if classifier == "dtree":
-        model = dtree()
+        # unique_labels = list(set(labels))
+        labels = LabelEncoder().fit_transform(labels)
+        types = ["cc", "con", "emboss", "jitter", "neg", "noise01", "noise02", "original", "poster", "rot", "smooth", "stipple"]
+        # label_dict = {i : unique_labels[i] for i in range(len(unique_labels))}
+        model = DTree(types, max_depth=7)
     elif classifier == "svm":
         model = SVM()
     model.fit(train_matrix, labels)
@@ -315,7 +445,7 @@ def shuffle(data_matrix, labels):
 
 if __name__ == "__main__":
     # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "all", "elbp", "*", "500", "svm"
+    train_folder, feature_model, k, test_folder, classifier = "100", "elbp", "20", "testt", "dtree"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     data_matrix, labels = shuffle(data_matrix, labels)
     if k != 'all' and k != '*':
