@@ -82,7 +82,7 @@ def print_LSH_size(Hash_key_table):
     print("Size of LSH structure: ", sys.getsizeof(Hash_key_table), " bytes")
 
 
-def get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t):
+def get_similar_images_LSH(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t):
     total_buckets = 0
     matches_list = {}
     while True:
@@ -176,5 +176,5 @@ if __name__ == "__main__":
     query_vector = np.array(extract_features_for_new_image("../images/" + query_image, feature_model))
     LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)
     Hash_key_table = make_index_structure(LSH_structure, data_matrix)
-    top_t_matches, all_nearest_matches = get_similar_images(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t)
+    top_t_matches, all_nearest_matches = get_similar_images_LSH(data_matrix, query_vector, n_layers, n_hash_per_layer, labels, Hash_key_table, LSH_structure, t)
     print_FP_and_miss_rates(top_t_matches, all_nearest_matches, query_vector, data_matrix, labels)

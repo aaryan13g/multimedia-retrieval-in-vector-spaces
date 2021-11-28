@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from p3_task1 import create_data_matrix, apply_dim_red, extract_features_for_new_image
-from p3_task4 import create_LSH, get_similar_images, make_index_structure
+from p3_task4 import create_LSH, get_similar_images_LSH, make_index_structure
 from p3_task7 import svm_relevance_feedback
 from p3_task6 import dtree_relevance_feedback
 from p3_task5 import *
@@ -29,7 +29,7 @@ def transform_query(query_img, feature_model, latent_semantics):
 def run_LSH(L, K, vector_space_matrix, labels, query_img_vector, t):
     LSH_structure = create_LSH(len(vector_space_matrix[0]), L, K)
     Hash_key_table = make_index_structure(LSH_structure, vector_space_matrix)
-    top_t_matches, _ = get_similar_images(vector_space_matrix, query_img_vector, L, K, labels, Hash_key_table, LSH_structure, t)
+    top_t_matches, _ = get_similar_images_LSH(vector_space_matrix, query_img_vector, L, K, labels, Hash_key_table, LSH_structure, t)
     return top_t_matches
 
 def run_VA(bits, vector_space_matrix, labels, query_img_vector, t):
