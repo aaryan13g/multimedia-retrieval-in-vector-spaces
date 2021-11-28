@@ -404,7 +404,7 @@ def create_similarity_matrix(train_matrix, train_labels):
     for i in range(len(train_labels)):
         if train_labels[i] not in sim_dict:
             sim_dict[train_labels[i]] = []
-        sim_dict[train_labels[i]] += train_matrix[i].tolist()
+        sim_dict[train_labels[i]].append(train_matrix[i])
     for label in sim_dict:
         sim_dict[label] = np.array(sim_dict[label])
     combinations = list(itertools.combinations(sim_dict.keys(), 2))
@@ -423,7 +423,6 @@ def create_similarity_matrix(train_matrix, train_labels):
             # print("Equal: ", i, " ", j)
             similarity_matrix[i][j] = 0.0
             j = j + 1
-        print("Calculating similarity between", combination[0], "and", combination[1])
         dist_val = calc_distance_between_matrices(sim_dict[combination[0]], sim_dict[combination[1]])
         similarity_matrix[i][j] = dist_val
         similarity_matrix[j][i] = dist_val
@@ -447,7 +446,7 @@ def find_min_distance_with_data_matrix(individual_data_matrix, image_vector):
 
 def ppr_classifier(similarity_matrix, label_list):
     similarity_graph = create_sim_graph(similarity_matrix, label_list, n=3)
-    nodes = convert_graph_to_nodes(similarity_graph, len(similarity_matrix), label_list)
+    nodes = convert_graph_to_nodes(similarity_graph, len(similarity_matrix), label_list, similarity_matrix)
     query_subjects = ['query']
     i = 0
     while i < 100:
@@ -455,19 +454,14 @@ def ppr_classifier(similarity_matrix, label_list):
         if converge:
             break
         i = i + 1
-    print("PageRank converged in ", i, " iterations.")
     # for node in nodes:
     #     nodes[node].print_node()
-    match_dict = {}
     maxx = -1
     max_node = None
     for node in nodes:
-        match_dict[nodes[node].id] = nodes[node].pagerank
         if nodes[node].pagerank > maxx and nodes[node].id != 'query':
             maxx = nodes[node].pagerank
             max_node = nodes[node].id
-    match_dict = dict(sorted(match_dict.items(), key=lambda item: item[1]))
-    print(match_dict)
     return max_node
 
 
@@ -525,7 +519,7 @@ def shuffle(data_matrix, labels):
 
 if __name__ == "__main__":
     # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "500", "elbp", "50", "100", "dtree"
+    train_folder, feature_model, k, test_folder, classifier = "1000", "elbp", "*", "100", "ppr"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     if k != 'all' and k != '*':
         if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
@@ -554,12 +548,14 @@ if __name__ == "__main__":
         for img in test_matrix:
             distance_list = []
             for label in individual_train_dict:
-                distance_list.append(find_min_distance_with_data_matrix(individual_train_dict[label], img))
+                distance = find_min_distance_with_data_matrix(individual_train_dict[label], img)
+                distance_list.append(distance)
+            distance_list = np.append(distance_list, 0)
             similarity_list = normalize_data(distance_list)
             similarity_list = 1 - similarity_list
+            similarity_list_temp = similarity_list[:-1]
             updated_similarity_matrix = similarity_matrix.copy()
-            updated_similarity_matrix = np.insert(updated_similarity_matrix, len(similarity_list), similarity_list, axis=1)
-            similarity_list = np.append(similarity_list, 1)
+            updated_similarity_matrix = np.insert(updated_similarity_matrix, len(similarity_list) - 1, similarity_list_temp, axis=1)
             updated_similarity_matrix = np.insert(updated_similarity_matrix, len(similarity_list) - 1, similarity_list, axis=0)
             predicted = ppr_classifier(updated_similarity_matrix, list(individual_train_dict.keys()) + ['query'])
             pred_labels.append(predicted)

@@ -8,16 +8,20 @@ class Node:
     def __init__(self, id, subject_len):
         self.id = id
         self.children = []
+        self.children_similarity = []
         self.parents = []
         self.pagerank = 1.0 / subject_len
         self.differ = 1.0
 
     def update_pagerank(self, beta, query_subjects):
         in_neighbors = self.parents
+        pagerank_sum = 0
         if len(in_neighbors) != 0:
-            pagerank_sum = sum((node.pagerank / len(node.children)) for node in in_neighbors)
-        else:
-            pagerank_sum = 0
+            for node in in_neighbors:
+                idx = node.children.index(self)
+                sim = node.children_similarity[idx]
+                summ = sum(node.children_similarity)
+                pagerank_sum += (node.pagerank * sim) / summ
         if self.id in query_subjects:
             teleport = beta / len(query_subjects)
         else:
@@ -30,6 +34,7 @@ class Node:
     def print_node(self):
         print("Node: ", self.id)
         print("Children: ", [child.id for child in self.children])
+        print("Children Similarity: ", [sim for sim in self.children_similarity])
         print("Parents: ", [parent.id for parent in self.parents])
         print("Page Rank: ", self.pagerank)
 
@@ -51,14 +56,15 @@ def create_sim_graph(sub_sub_similarity_matrix, label_list, n):
     for i in range(len(sub_sub_similarity_matrix)):
         temp = sub_sub_similarity_matrix[i]
         rank = np.argpartition(temp, -(n + 1))[-(n + 1):]
-        rank = rank[np.argsort(temp[rank])]
-        for j in range(len(rank) - 1):
-            graph.append([label_list[i], label_list[rank[j]]])
+        rank = rank[np.argsort(-(temp)[rank])]
+        for j in range(len(rank)):
+            if label_list[i] != label_list[rank[j]]:
+                graph.append([label_list[i], label_list[rank[j]]])
 
     return np.array(graph)
 
 
-def convert_graph_to_nodes(graph, len_total_nodes, label_list):
+def convert_graph_to_nodes(graph, len_total_nodes, label_list, similarity_matrix):
     parent_dict = {}
     child_dict = {}
     for i in range(len_total_nodes):
@@ -77,6 +83,9 @@ def convert_graph_to_nodes(graph, len_total_nodes, label_list):
     for parent in child_dict:
         for child in child_dict[parent]:
             nodes[parent].children.append(nodes[child])
+            node1 = nodes[parent].id
+            node2 = nodes[child].id
+            nodes[parent].children_similarity.append(similarity_matrix[label_list.index(node1)][label_list.index(node2)])
     for child in parent_dict:
         for parent in parent_dict[child]:
             nodes[child].parents.append(nodes[parent])
