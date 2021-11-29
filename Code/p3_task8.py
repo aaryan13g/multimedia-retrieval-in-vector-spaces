@@ -20,7 +20,6 @@ def create_vector_space(input_folder, feature_model, dim_red, k):
 def transform_query(query_img, feature_model, latent_semantics):
     img_path = '../images/' + query_img
     feature_vector = np.array(extract_features_for_new_image(img_path, feature_model))
-    print(feature_vector)
     if latent_semantics is not None:
         feature_vector = feature_vector @ latent_semantics
     return feature_vector
@@ -81,6 +80,7 @@ if __name__ == "__main__":
         k = int(input())
     else:
         k = '*'
+    print("Creating vector space...Please wait.")
     vector_space_matrix, labels, latent_semantics = create_vector_space(input_folder, feature_model, dim_red, k)
     query_img_vector = transform_query(query_img, feature_model, latent_semantics)
     print('-------------------------------------------------------------------------------')
@@ -92,15 +92,14 @@ if __name__ == "__main__":
         inp = list(map(int, input().split()))
         L, K = inp[0], inp[1]
         nearest_neighbors = run_LSH(L, K, vector_space_matrix, labels, query_img_vector, t)
-        # nearest_neighbors = {Rank_index: neighbor_img1, ......}
     else:
-        print("#Bits-per-dimension")
-        b = int(input)
+        print("#Bits-per-dimension(b)")
+        b = int(input())
         nearest_neighbors = run_VA(b, vector_space_matrix, labels, query_img_vector, t)
     print('-------------------------------------------------------------------------------')
-    for index in nearest_neighbors:
-        print('Rank ', index, ':', nearest_neighbors[index])
-    print('-------------------------------------------------------------------------------')
+    # for index in nearest_neighbors:
+    #     print('Rank ', index, ':', nearest_neighbors[index])
+    # print('-------------------------------------------------------------------------------')
     print("Enter space-separated index numbers for relevant images:")
     while True:
         relevant_imgs = list(map(int, input().split()))
