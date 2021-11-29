@@ -26,7 +26,7 @@ _USAGE_:
 
 The code is written on a Python Environment. Each code file can be run individually. 
 
-All the sample output are stored in the outputs folders(Outputs and Data Matrices) and the results has been explained in report.
+All the sample output are stored in the outputs folders(Outputs) and the results has been explained in report.
 
 The code is well commented and should be self explanatory. For each and every task, the code is contained in the Code folder and the tasks can be implemented independently.
 
