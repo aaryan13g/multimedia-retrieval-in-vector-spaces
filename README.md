@@ -6,18 +6,25 @@ Please install latest version of a Python IDE for your system from any respectiv
 _Requirements_:
 
 • Python 3.6+
+
 • Windows Operating System (10 or higher)
+
 • Visual Studio Code/PyCharm IDE
 
 
 -- _Installing required Libraries_:
 
 -Numpy - pip install numpy
+
 -Pymongo - pip install pymongo
+
 -Matplotlib - pip install matplotlib
+
 -PIL -  python3 -m pip install --upgrade pip  
         python3 -m pip install --upgrade Pillow
+
 -Sklearn - pip install scikit-image
+
 -itertools - pip install more-itertools
 
 Please note that some additional libraries/dependencies might be required. Please install them as per the need.
