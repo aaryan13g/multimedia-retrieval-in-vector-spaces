@@ -17,10 +17,7 @@ hash_table = dict()
 def create_hash(results):
     for i in range(len(results)):
         hash_table.setdefault(results[i], []).append(i + 1)
-    # print(hash_table)
-    for keys in hash_table:
-        if len(hash_table[keys]) > 1:
-            print(hash_table[keys])
+   
     return hash_table
 
 
@@ -48,11 +45,7 @@ def create_VA(data_matrix, bits):
                     br = '0' * (bits - len(br)) + br
                 img = img + br
         results.append(img)
-        # for i in range(0,len(results)):
-    #     print(i)  
-    #     print(len(data_matrix[i]))       
-    #     print(len(results[i]))
-    # print(results)
+        
     return results, l
 
 
@@ -69,12 +62,7 @@ def get_bounds(vq, ri, p, bits):
     res = 0
     rq, _ = create_VA(vq, bits)
     rq = [int(rq[0][i:i + bits], 2) for i in range(0, len(rq[0]), bits)]
-    # rq = list(map(int, rq))   
-    # print(p)
-    # print(imgLen)
-    # print(rq)
-    # print(len(ri))
-    # print(len(rq))
+    
     for j in range(0, imgLen):
         if ri[j] < rq[j]:
             l.append(vq[0][j] - p[ri[j] + 1])
@@ -93,7 +81,7 @@ def InitCandidate(n, dst):
     return float('inf'), dst
 
 
-def Candidate(d, i, n, dst, ans, count):
+def Candidate(d, i, n, dst, ans, count,labels,all_nearest_images):
     if d < dst[n]:
         all_nearest_images[i] = labels[int(i)]
 
@@ -109,18 +97,17 @@ def Candidate(d, i, n, dst, ans, count):
     return dst[n], ans, count, all_nearest_images
 
 
-def va_ssa(vq, vi, n, li, count, all_nearest_images):
+def va_ssa(vq, vi, n, li, count, all_nearest_images,bits,data_matrix,labels):
     dst = np.zeros((n))
 
     d, dst = InitCandidate(n, dst)
     ans = np.zeros((n))
     rq, _ = create_VA(vq, bits)
     rq = [int(rq[0][i:i + bits], 2) for i in range(0, len(rq[0]), bits)]
-    # print(rq)
 
     for j in range(len(data_matrix)):
         if li[j] < d:
-            d, ans, count, all_nearest_images = Candidate(distance.minkowski(rq, vi[j], 3), j, n - 1, dst, ans, count)
+            d, ans, count, all_nearest_images = Candidate(distance.minkowski(rq, vi[j], 3), j, n - 1, dst, ans, count,labels,all_nearest_images)
 
     return d, ans, count, all_nearest_images
 
@@ -155,10 +142,7 @@ if __name__ == "__main__":
         chunks = list(map(int, chunks))
     count = 0
     all_nearest_images = {}
-    d, ans, count, all_nearest_images = va_ssa(query_image, temp1, t, li, count, all_nearest_images)
-    print(ans)
-    print(d)
-    # print(count)
+    d, ans, count, all_nearest_images = va_ssa(query_image, temp1, t, li, count, all_nearest_images,bits,data_matrix,labels)
     similar_images = get_similar_images(ans, labels)
     print("\nThe nearest images are : \n")
     for keys in similar_images:
@@ -170,7 +154,6 @@ if __name__ == "__main__":
     for keys in all_nearest_images:
         ani[i] = all_nearest_images[keys]
         i = i + 1
-        # print("Rank ", keys ," :" , all_nearest_images[keys])
 
     for keys in ani:
         print("Rank ", keys, " :", ani[keys])

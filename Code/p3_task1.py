@@ -143,6 +143,8 @@ class SVM:
         n_samples, n_features = X.shape
         separators = {}
         unique_labels = list(set(y))
+        if 'relevant' in unique_labels:
+            unique_labels = ['relevant','irrelevant']
         for lab in unique_labels:
             print("Finding separator for label: ", lab)
             y_ = [1 if y[l] == lab else -1 for l in range(len(y))]
@@ -215,7 +217,6 @@ def extract_features_for_new_image(image_path, feature_model):
     elif feature_model == 'hog':
         features, _ = histogram_of_oriented_gradients_model(image_data)
         features = normalize_data(features.tolist()).tolist()
-    
     return features
 
 

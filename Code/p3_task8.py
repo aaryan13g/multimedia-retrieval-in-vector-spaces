@@ -6,22 +6,32 @@ from p3_task7 import svm_relevance_feedback
 from p3_task6 import dtree_relevance_feedback
 from p3_task5 import *
 
-def create_vector_space(input_folder, feature_model, dim_red, k):
+def normalized(x):
+    return (x - np.min(x)) / (np.max(x) - np.min(x)) 
+
+def create_vector_space(input_folder, feature_model, dim_red, k,query_img_vector):
+    query_img_vector =np.array([query_img_vector])
     data_matrix, labels = create_data_matrix(input_folder, feature_model, label_mode='all')
+    data_matrix = np.concatenate((data_matrix, query_img_vector))
+    
     if dim_red == 'none' and k == '*':
         print("No dimensionality reduction requested!")
         return data_matrix, labels, None
     else:
         print("Applying dimensionality reduction:", dim_red)
         latent_semantics, reduced_matrix = apply_dim_red(data_matrix, k, dim_red)
-        return reduced_matrix, labels, latent_semantics
+    
+    for i in range(len(reduced_matrix)):
+        reduced_matrix[i] =normalized(reduced_matrix[i])
+    
+    reduced_query_matrix = reduced_matrix[-1]
+    reduced_data_matrix = reduced_matrix[:-1]
+    return reduced_data_matrix, reduced_query_matrix, labels, latent_semantics
 
 
-def transform_query(query_img, feature_model, latent_semantics):
+def transform_query(query_img, feature_model):
     img_path = '../images/' + query_img
     feature_vector = np.array(extract_features_for_new_image(img_path, feature_model))
-    if latent_semantics is not None:
-        feature_vector = feature_vector @ latent_semantics
     return feature_vector
 
 
@@ -34,10 +44,10 @@ def run_LSH(L, K, vector_space_matrix, labels, query_img_vector, t):
 def run_VA(bits, vector_space_matrix, labels, query_img_vector, t):
     query_img_vector=np.array([query_img_vector])
     res, p = create_VA(vector_space_matrix, bits)
-    hashed=create_hash(res)
+    # hashed=create_hash(res)
     li=[]
     temp1=[]
-    for j in range(len(vector_space_matrix)):
+    for j in range(len(vector_space_matrix)):        
         chunks = [res[j][i:i+bits] for i in range(0, len(res[j]), bits)]
         temp=[]
         for i in range(len(chunks)):
@@ -45,10 +55,29 @@ def run_VA(bits, vector_space_matrix, labels, query_img_vector, t):
         temp1.append(temp)
         li.append(get_bounds(query_img_vector,temp,p,bits))
         chunks = list(map(int, chunks))
+        
     count=0 
     all_nearest_images={}
-    d,ans,count,all_nearest_images=va_ssa(query_img_vector,temp1,t,li,count,all_nearest_images)
+    d,ans,count,all_nearest_images=va_ssa(query_img_vector,temp1,t,li,count,all_nearest_images,bits,vector_space_matrix,labels)
     similar_images=get_similar_images(ans,labels)
+    
+    print("-------------------------------------------------------------------------------------------------")   
+    ani = {}
+    i = 1
+    for keys in all_nearest_images:
+        ani[i] = all_nearest_images[keys]
+        i = i + 1
+
+    for keys in ani:
+        print("Rank ", keys, " :", ani[keys])
+    print("-------------------------------------------------------------------------------------------------")
+
+    print("\nThe nearest images are : \n")
+    for keys in similar_images:
+        print("Rank ", keys, " :", similar_images[keys])
+
+    print("-------------------------------------------------------------------------------------------------")
+    
     return similar_images
 
 
@@ -81,8 +110,9 @@ if __name__ == "__main__":
     else:
         k = '*'
     print("Creating vector space...Please wait.")
-    vector_space_matrix, labels, latent_semantics = create_vector_space(input_folder, feature_model, dim_red, k)
-    query_img_vector = transform_query(query_img, feature_model, latent_semantics)
+    query_img_vec = transform_query(query_img, feature_model)
+    vector_space_matrix, query_img_vector, labels, latent_semantics = create_vector_space(input_folder, feature_model, dim_red, k,query_img_vec)
+    #query_img_vector = transform_query(query_img, feature_model, latent_semantics)
     print('-------------------------------------------------------------------------------')
     print("Enter Index-tool (LSH/VA):")
     index_tool = input()
