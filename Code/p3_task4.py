@@ -1,9 +1,4 @@
-import os
-import pymongo
 import numpy as np
-import random
-import itertools
-import matplotlib.pyplot as plt
 import sys
 from p3_task1 import create_data_matrix, extract_features_for_new_image
 
@@ -170,8 +165,8 @@ def print_FP_and_miss_rates(top_t_matches, all_nearest_matches, query_vector, da
     
 
 if __name__ == "__main__":
-    # n_layers, n_hash_per_layer, folder, feature_model, query_image, t = get_input()
-    n_layers, n_hash_per_layer, folder, feature_model, query_image, t = 5, 8, "100", "elbp", "all/image-cc-1-9.png", 20
+    n_layers, n_hash_per_layer, folder, feature_model, query_image, t = get_input()
+    # n_layers, n_hash_per_layer, folder, feature_model, query_image, t = 5, 8, "100", "elbp", "all/image-cc-1-9.png", 20
     data_matrix, labels = create_data_matrix(folder, feature_model, label_mode="all")
     query_vector = np.array(extract_features_for_new_image("../images/" + query_image, feature_model))
     LSH_structure = create_LSH(len(data_matrix[0]), n_layers, n_hash_per_layer)

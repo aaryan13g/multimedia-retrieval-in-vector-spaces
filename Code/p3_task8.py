@@ -152,6 +152,7 @@ if __name__ == "__main__":
     else:
         ranked_results = DT_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
     print('-------------------------------------------------------------------------------')
+    print("\nRe-Ranked results based on relevance feedback:\n")
     for index in ranked_results:
         print('Rank ', index, ':', ranked_results[index])
     print('-------------------------------------------------------------------------------')

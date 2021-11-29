@@ -1,10 +1,3 @@
-import os
-from numpy.lib.stride_tricks import DummyArray
-import pymongo
-import numpy as np
-import random
-import itertools
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import distance
 from p3_task1 import extract_features_for_new_image, create_data_matrix

@@ -291,28 +291,11 @@ def apply_dim_red(data_matrix, k, dim_red='pca'):
     return LS, WT
 
 
-# def dtree():
-#     model_dtree = DecisionTreeClassifier(class_weight=None, criterion='entropy', max_depth=None, max_features=None, max_leaf_nodes=None, min_impurity_decrease=0.0, min_impurity_split=None, min_samples_leaf=1, min_samples_split=6, min_weight_fraction_leaf=0.0, random_state=None, splitter='best')
-#     return model_dtree
-
-
 def calc_distance_between_matrices(matrix1, matrix2):
-    # dist_list = []
     sum1 = np.sum(matrix1, axis=0) / len(matrix1)
     sum2 = np.sum(matrix2, axis=0) / len(matrix2)
     dist = np.linalg.norm(sum1 - sum2)
     return dist
-    # for v1 in matrix1:
-    #     for v2 in matrix2:
-    #         dist = np.linalg.norm(v1 - v2)
-    #         dist_list.append(dist)
-    # for p in range(len(matrix1)):
-    #     feature_vector_1 = matrix1[p]
-    #     feature_vector_2 = matrix2[p]
-    #     dist = np.linalg.norm(feature_vector_1 - feature_vector_2)
-    #     dist_list.append(dist)
-    # dist_sum = sum(dist_list)
-    # return dist_sum / len(matrix1)
 
 
 def create_similarity_matrix(train_matrix, train_labels):
@@ -434,8 +417,8 @@ def shuffle(data_matrix, labels):
 
 
 if __name__ == "__main__":
-    # train_folder, feature_model, k, test_folder, classifier = get_input()
-    train_folder, feature_model, k, test_folder, classifier = "500", "elbp", "10", "100", "dtree"
+    train_folder, feature_model, k, test_folder, classifier = get_input()
+    # train_folder, feature_model, k, test_folder, classifier = "500", "elbp", "10", "100", "dtree"
     data_matrix, labels = create_data_matrix(train_folder, feature_model, label_mode='X')
     if k != 'all' and k != '*':
         if train_folder + '_' + feature_model + '_' + k + '_LS.csv' in os.listdir('Latent-Semantics') and train_folder + '_' + feature_model + '_' + k + '_WT.csv' in os.listdir('Latent-Semantics'):
