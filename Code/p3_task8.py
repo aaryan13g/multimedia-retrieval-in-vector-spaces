@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from math import ceil
+from PIL import Image
 from p3_task1 import create_data_matrix, apply_dim_red, extract_features_for_new_image
 from p3_task4 import create_LSH, get_similar_images_LSH, make_index_structure
 from p3_task7 import svm_relevance_feedback
@@ -89,6 +91,25 @@ def DT_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vec
     return dtree_relevance_feedback(relevant_imgs, irrelevant_imgs, nearest_neighbors, vector_space_matrix, labels)
 
 
+def display_nearest_neighbors(input_folder, nearest_neighbors, mode):
+    fig = plt.figure(figsize=(10, 10))
+    rows = ceil((len(nearest_neighbors) + 1) / 4)
+    cols = 4
+    i = 1
+    for rank in nearest_neighbors:
+        im = Image.open("../images/" + input_folder + "/" + nearest_neighbors[rank])
+        fig.add_subplot(rows, cols, i)
+        i = i + 1
+        plt.imshow(im, cmap="gray")
+        plt.axis("off")
+        plt.title("Neighbor " + str(i - 1) + ":\n" + nearest_neighbors[rank])
+    if mode == "initial":
+        plt.suptitle("Nearest Neighbors Without Relevance Feedback")
+    elif mode == "reranked":
+        plt.suptitle("Re-Ranked Nearest Neighbors With Relevance Feedback")
+    plt.show()
+
+
 if __name__ == "__main__":
     print("Enter the query image:")
     query_img = input()
@@ -130,6 +151,7 @@ if __name__ == "__main__":
     # for index in nearest_neighbors:
     #     print('Rank ', index, ':', nearest_neighbors[index])
     # print('-------------------------------------------------------------------------------')
+    display_nearest_neighbors(input_folder, nearest_neighbors, mode="initial")
     print("Enter space-separated index numbers for relevant images:")
     while True:
         relevant_imgs = list(map(int, input().split()))
@@ -156,3 +178,4 @@ if __name__ == "__main__":
     for index in ranked_results:
         print('Rank ', index, ':', ranked_results[index])
     print('-------------------------------------------------------------------------------')
+    display_nearest_neighbors(input_folder, ranked_results, mode="reranked")
