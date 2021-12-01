@@ -18,7 +18,8 @@ def create_vector_space(input_folder, feature_model, dim_red, k,query_img_vector
     
     if dim_red == 'none' and k == '*':
         print("No dimensionality reduction requested!")
-        return data_matrix, labels, None
+        latent_semantics = None
+        reduced_matrix = data_matrix
     else:
         print("Applying dimensionality reduction:", dim_red)
         latent_semantics, reduced_matrix = apply_dim_red(data_matrix, k, dim_red)
