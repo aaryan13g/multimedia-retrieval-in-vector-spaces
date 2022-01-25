@@ -53,16 +53,16 @@ In the final phase of this project, we study and implement classification algori
 
 _Interface Specification_:
 
-This project uses the basic command line interface for taking the inputs and displaying outputs of every task. The user must have a stdin and stdout command line. The inputs are passed as command line arguments to each task as specified in the get_input or get_sys_args functions in the code files. The outputs are displayed in stdout. All the task files have to be run using python 3.6 or above.
+This project uses the basic command line interface for taking the inputs and displaying outputs of every task. The user must have a stdin and stdout command line. The inputs are passed as command line arguments to each task as specified in the `get_input` or `get_sys_args` functions in the code files. The outputs are displayed in stdout. All the task files have to be run using python 3.6 or above.
 
 Data Matrix created during the execution of tasks is stored in the format:
-image-folder-name_feature-model.csv
+`image-folder-name_feature-model.csv`
 
 Transformed Data Matrix after dimensionality reduction is stored in the format:
-image-folder-name_feature-model_k_WT.csv
+`image-folder-name_feature-model_k_WT.csv`
 
 Latent Semantic Files created during the execution of tasks is stored in the format:
-image-folder-name_feature-model_k_LS.csv
+`image-folder-name_feature-model_k_LS.csv`
 
 
 Thank You!
